@@ -6,7 +6,13 @@
       "Bash(git checkout:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 프로젝트 초기 구조 및 설정 추가\n\n- 프로젝트 디렉토리 구조 생성 (src, config, assets, logs, tests)\n- requirements.txt: 필요한 Python 패키지 정의\n- config/settings.py: 프로젝트 전역 설정\n- 각 모듈별 __init__.py 생성\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit -m \"$(cat <<''EOF''\nrefactor: opencv-python 의존성 제거\n\n- pyautogui가 내부적으로 opencv를 사용하지만 직접 호출하지 않음\n- 불필요한 명시적 의존성 제거\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 핵심 기반 모듈 구현\n\n- TemplateMatcher: pyautogui 템플릿 매칭 래퍼\n  - 재시도 로직 및 타임아웃 지원\n  - 템플릿 대기/소멸 감지 기능\n- GameController: 게임 제어 (마우스/키보드)\n  - 클릭, 드래그, 키 입력\n  - 화면 캡처 및 대기 함수\n- TestLogger: 테스트 결과 로깅\n  - JSON 형식 결과 저장\n  - 스크린샷 저장 기능\n  - 검증 항목별 결과 추적\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 핵심 기반 모듈 구현\n\n- TemplateMatcher: pyautogui 템플릿 매칭 래퍼\n  - 재시도 로직 및 타임아웃 지원\n  - 템플릿 대기/소멸 감지 기능\n- GameController: 게임 제어 (마우스/키보드)\n  - 클릭, 드래그, 키 입력\n  - 화면 캡처 및 대기 함수\n- TestLogger: 테스트 결과 로깅\n  - JSON 형식 결과 저장\n  - 스크린샷 저장 기능\n  - 검증 항목별 결과 추적\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(pip install:*)",
+      "Bash(python tests/test_modules.py:*)",
+      "Bash(python -m pip:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\ntest: 모듈 테스트 스크립트 추가\n\n- GameController 기본 기능 테스트\n- TemplateMatcher 이미지 인식 및 클릭 테스트\n- TestLogger 결과 로깅 테스트\n- 모든 핵심 모듈 동작 검증 완료\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

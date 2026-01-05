@@ -58,10 +58,13 @@ class StageRunner:
         전체 플로우:
         1. 시작 발판 클릭 → 편성 화면 이동
         2. 출격 버튼 클릭 → 학생 배치
-        3. 적 발판 클릭 → 전투 시작
-        4. 스킬 사용
-        5. 전투 종료 대기
-        6. 보상 수령
+        2.5. 임무 개시 버튼 클릭
+        3. 발판 이동 (적이 없는 발판으로)
+        3.5. Phase 종료 버튼 클릭
+        4. 적 발판 클릭 → 전투 시작
+        5. 스킬 사용
+        6. 전투 종료 대기
+        7. 보상 수령
 
         Args:
             skill_configs: 스킬 설정 리스트 (None이면 자동 탐지)
@@ -112,9 +115,62 @@ class StageRunner:
             return self._finalize_results(overall_success)
 
         # ============================================================
-        # 3단계: 적 발판 클릭 → 전투 진입
+        # 2.5단계: 임무 개시 버튼 클릭
         # ============================================================
-        logger.info("\n[3단계] 적 발판 클릭 및 전투 진입")
+        logger.info("\n[2.5단계] 임무 개시 버튼 클릭")
+
+        mission_start_result = self._click_mission_start_button()
+        self.test_logger.log_check(
+            "임무_개시",
+            mission_start_result["success"],
+            mission_start_result["message"],
+            mission_start_result
+        )
+
+        if not mission_start_result["success"]:
+            overall_success = False
+            logger.error("임무 개시 버튼 클릭 실패, 중단")
+            return self._finalize_results(overall_success)
+
+        # ============================================================
+        # 3단계: 발판 이동 (적이 없는 발판으로)
+        # ============================================================
+        logger.info("\n[3단계] 발판 이동")
+
+        move_result = self._move_to_enemy_tile()
+        self.test_logger.log_check(
+            "발판_이동",
+            move_result["success"],
+            move_result["message"],
+            move_result
+        )
+
+        if not move_result["success"]:
+            overall_success = False
+            logger.warning("발판 이동 실패 (선택 사항, 계속 진행)")
+            # 발판 이동 실패해도 계속 진행 (바로 적 발판으로 갈 수도 있음)
+
+        # ============================================================
+        # 3.5단계: Phase 종료 버튼 클릭
+        # ============================================================
+        logger.info("\n[3.5단계] Phase 종료")
+
+        phase_end_result = self._end_phase()
+        self.test_logger.log_check(
+            "Phase_종료",
+            phase_end_result["success"],
+            phase_end_result["message"],
+            phase_end_result
+        )
+
+        if not phase_end_result["success"]:
+            overall_success = False
+            logger.warning("Phase 종료 실패 (선택 사항, 계속 진행)")
+
+        # ============================================================
+        # 4단계: 적 발판 클릭 → 전투 진입
+        # ============================================================
+        logger.info("\n[4단계] 적 발판 클릭 및 전투 진입")
 
         battle_entry_result = self._enter_battle()
         self.test_logger.log_check(
@@ -130,9 +186,9 @@ class StageRunner:
             return self._finalize_results(overall_success)
 
         # ============================================================
-        # 4단계: 스킬 사용
+        # 5단계: 스킬 사용
         # ============================================================
-        logger.info("\n[4단계] 스킬 사용")
+        logger.info("\n[5단계] 스킬 사용")
 
         skill_result = self._use_skills(skill_configs)
         self.test_logger.log_check(
@@ -147,9 +203,9 @@ class StageRunner:
             logger.warning("스킬 사용 실패 (전투는 계속)")
 
         # ============================================================
-        # 5단계: 전투 종료 대기
+        # 6단계: 전투 종료 대기
         # ============================================================
-        logger.info("\n[5단계] 전투 종료 대기")
+        logger.info("\n[6단계] 전투 종료 대기")
 
         battle_end_result = self.battle_checker.wait_battle_end(timeout=120)
         self.test_logger.log_check(
@@ -165,9 +221,9 @@ class StageRunner:
             return self._finalize_results(overall_success)
 
         # ============================================================
-        # 6단계: 보상 수령
+        # 7단계: 보상 수령
         # ============================================================
-        logger.info("\n[6단계] 보상 수령")
+        logger.info("\n[7단계] 보상 수령")
 
         reward_result = self.reward_checker.verify_and_claim(wait_for_reward=15)
         self.test_logger.log_check(
@@ -244,30 +300,169 @@ class StageRunner:
 
         return result
 
+    def _click_mission_start_button(self) -> Dict[str, Any]:
+        """임무 개시 버튼 클릭"""
+        mission_start_button = BUTTONS_DIR / "mission_start_button.png"
+
+        result = {
+            "success": False,
+            "button_found": False,
+            "button_clicked": False,
+            "message": ""
+        }
+
+        # 임무 개시 버튼 찾기
+        button_location = self.matcher.find_template(mission_start_button)
+        if not button_location:
+            result["message"] = "임무 개시 버튼을 찾을 수 없습니다"
+            return result
+
+        result["button_found"] = True
+
+        # 임무 개시 버튼 클릭
+        try:
+            clicked = self.controller.click_template(
+                button_location,
+                wait_after=2.0
+            )
+            if clicked:
+                result["button_clicked"] = True
+                result["success"] = True
+                result["message"] = "임무 개시 성공"
+            else:
+                result["message"] = "임무 개시 버튼 클릭 실패"
+
+        except Exception as e:
+            result["message"] = f"임무 개시 버튼 클릭 중 오류: {e}"
+
+        return result
+
+    def _move_to_enemy_tile(self) -> Dict[str, Any]:
+        """적 발판으로 이동 (적이 없는 발판을 거쳐서)"""
+        empty_tile = ICONS_DIR / "empty_tile.png"
+
+        result = {
+            "success": False,
+            "moved": False,
+            "message": ""
+        }
+
+        # 적이 없는 발판 클릭 (학생 이동)
+        tile_location = self.matcher.find_template(empty_tile)
+        if not tile_location:
+            result["message"] = "이동 가능한 발판을 찾을 수 없습니다"
+            logger.warning(result["message"])
+            return result
+
+        logger.info(f"이동 가능한 발판 발견: {tile_location}")
+
+        # 발판 클릭
+        try:
+            clicked = self.controller.click_template(tile_location, wait_after=1.5)
+            if clicked:
+                result["moved"] = True
+                result["success"] = True
+                result["message"] = "발판 이동 성공"
+                logger.info(result["message"])
+            else:
+                result["message"] = "발판 클릭 실패"
+                logger.error(result["message"])
+        except Exception as e:
+            result["message"] = f"발판 클릭 중 오류: {e}"
+            logger.error(result["message"])
+
+        return result
+
+    def _end_phase(self) -> Dict[str, Any]:
+        """Phase 종료 버튼 클릭"""
+        phase_end_button = BUTTONS_DIR / "phase_end_button.png"
+
+        result = {
+            "success": False,
+            "button_found": False,
+            "button_clicked": False,
+            "message": ""
+        }
+
+        # Phase 종료 버튼 찾기
+        button_location = self.matcher.find_template(phase_end_button)
+        if not button_location:
+            result["message"] = "Phase 종료 버튼을 찾을 수 없습니다"
+            logger.warning(result["message"])
+            return result
+
+        result["button_found"] = True
+        logger.info(f"Phase 종료 버튼 발견: {button_location}")
+
+        # Phase 종료 버튼 클릭
+        try:
+            clicked = self.controller.click_template(button_location, wait_after=2.0)
+            if clicked:
+                result["button_clicked"] = True
+                result["success"] = True
+                result["message"] = "Phase 종료 성공"
+                logger.info(result["message"])
+            else:
+                result["message"] = "Phase 종료 버튼 클릭 실패"
+                logger.error(result["message"])
+        except Exception as e:
+            result["message"] = f"Phase 종료 버튼 클릭 중 오류: {e}"
+            logger.error(result["message"])
+
+        return result
+
     def _enter_battle(self) -> Dict[str, Any]:
         """적 발판 클릭 및 전투 진입"""
         enemy_tile = ICONS_DIR / "enemy_tile.png"
         battle_ui = UI_DIR / "battle_ui.png"
 
-        # 적 발판 클릭
-        tile_result = self.movement_checker.verify_movement(
-            tile_template=enemy_tile,
-            expected_screen_template=None,  # 클릭만 하고
-            timeout=5
-        )
+        result = {
+            "success": False,
+            "tile_found": False,
+            "tile_clicked": False,
+            "battle_started": False,
+            "message": ""
+        }
 
-        if not tile_result["success"]:
-            return tile_result
+        # 적 발판 찾기
+        tile_location = self.matcher.find_template(enemy_tile)
+        if not tile_location:
+            result["message"] = "적 발판을 찾을 수 없습니다"
+            logger.error(result["message"])
+            return result
+
+        result["tile_found"] = True
+        logger.info(f"적 발판 발견: {tile_location}")
+
+        # 적 발판 클릭
+        try:
+            clicked = self.controller.click_template(tile_location, wait_after=2.0)
+            if not clicked:
+                result["message"] = "적 발판 클릭 실패"
+                logger.error(result["message"])
+                return result
+
+            result["tile_clicked"] = True
+            logger.info("적 발판 클릭 성공")
+
+        except Exception as e:
+            result["message"] = f"적 발판 클릭 중 오류: {e}"
+            logger.error(result["message"])
+            return result
 
         # 전투 진입 확인 (전투 UI 출현)
         battle_started = self.matcher.wait_for_template(battle_ui, timeout=15)
 
-        return {
-            "success": battle_started is not None,
-            "tile_clicked": tile_result["tile_clicked"],
-            "battle_started": battle_started is not None,
-            "message": "전투 진입 성공" if battle_started else "전투 UI가 나타나지 않음"
-        }
+        if battle_started:
+            result["battle_started"] = True
+            result["success"] = True
+            result["message"] = "전투 진입 성공"
+            logger.info(result["message"])
+        else:
+            result["message"] = "전투 UI가 나타나지 않음"
+            logger.warning(result["message"])
+
+        return result
 
     def _use_skills(
         self,
