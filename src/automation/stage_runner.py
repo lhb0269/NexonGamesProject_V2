@@ -534,26 +534,36 @@ class StageRunner:
         return result
 
     def _verify_damage_report(self) -> Dict[str, Any]:
-        """통계 버튼 클릭 및 데미지 기록 확인"""
+        """통계 버튼 클릭 및 데미지 기록 확인 → 랭크 획득 → 스테이지 복귀"""
         battle_log_button = BUTTONS_DIR / "battle_log_button.png"
         damage_report = UI_DIR / "damage_report.png"
+        damage_report_close_button = BUTTONS_DIR / "damage_report_close_button.png"
+        confirm_button = BUTTONS_DIR / "confirm_button.png"
+        rank_reward_screen = UI_DIR / "rank_reward.png"
+        stage_map = UI_DIR / "stage_map.png"
 
         result = {
             "success": False,
-            "button_found": False,
-            "button_clicked": False,
-            "report_found": False,
+            "stats_button_found": False,
+            "stats_button_clicked": False,
+            "damage_report_found": False,
+            "damage_report_close_button_clicked": False,
+            "damage_report_closed": False,
+            "rank_reward_found": False,
+            "rank_reward_closed": False,
+            "returned_to_stage": False,
             "message": ""
         }
 
         # 1. 통계 버튼 찾기
+        logger.info("통계 버튼 찾는 중...")
         button_location = self.matcher.find_template(battle_log_button)
         if not button_location:
             result["message"] = "통계 버튼을 찾을 수 없습니다"
             logger.warning(result["message"])
             return result
 
-        result["button_found"] = True
+        result["stats_button_found"] = True
         logger.info(f"통계 버튼 발견: {button_location}")
 
         # 2. 통계 버튼 클릭
@@ -564,7 +574,7 @@ class StageRunner:
                 logger.error(result["message"])
                 return result
 
-            result["button_clicked"] = True
+            result["stats_button_clicked"] = True
             logger.info("통계 버튼 클릭 성공")
 
         except Exception as e:
@@ -573,15 +583,126 @@ class StageRunner:
             return result
 
         # 3. 데미지 기록 창 확인
+        logger.info("데미지 기록 창 확인 중...")
         report_appeared = self.matcher.wait_for_template(damage_report, timeout=10)
 
-        if report_appeared:
-            result["report_found"] = True
+        if not report_appeared:
+            result["message"] = "데미지 기록 창이 나타나지 않음"
+            logger.warning(result["message"])
+            return result
+
+        result["damage_report_found"] = True
+        logger.info("데미지 기록 창 출현 확인")
+
+        # 4. 데미지 기록 확인 후 3초 대기
+        logger.info("데미지 기록 확인 중... (3초 대기)")
+        import time
+        time.sleep(3.0)
+
+        # 5. 데미지 기록 창 닫기 버튼 클릭
+        logger.info("데미지 기록 창 닫기 버튼 찾는 중...")
+        close_button_location = self.matcher.find_template(damage_report_close_button)
+        if not close_button_location:
+            result["message"] = "데미지 기록 창 닫기 버튼을 찾을 수 없습니다"
+            logger.warning(result["message"])
+            return result
+
+        logger.info(f"닫기 버튼 발견: {close_button_location}")
+
+        try:
+            clicked = self.controller.click_template(close_button_location, wait_after=2.0)
+            if not clicked:
+                result["message"] = "데미지 기록 창 닫기 버튼 클릭 실패"
+                logger.error(result["message"])
+                return result
+
+            result["damage_report_close_button_clicked"] = True
+            logger.info("데미지 기록 창 닫기 버튼 클릭 성공")
+
+        except Exception as e:
+            result["message"] = f"닫기 버튼 클릭 중 오류: {e}"
+            logger.error(result["message"])
+            return result
+
+        # 6. Victory 화면으로 복귀 확인 후 확인 버튼 클릭
+        logger.info("Victory 화면 확인 버튼 찾는 중...")
+        time.sleep(1.0)  # 화면 안정화 대기
+
+        confirm_location = self.matcher.find_template(confirm_button)
+        if not confirm_location:
+            result["message"] = "Victory 화면 확인 버튼을 찾을 수 없습니다"
+            logger.warning(result["message"])
+            return result
+
+        logger.info(f"확인 버튼 발견: {confirm_location}")
+
+        try:
+            clicked = self.controller.click_template(confirm_location, wait_after=2.0)
+            if not clicked:
+                result["message"] = "확인 버튼 클릭 실패"
+                logger.error(result["message"])
+                return result
+
+            result["damage_report_closed"] = True
+            logger.info("Victory 화면 확인 버튼 클릭 성공")
+
+        except Exception as e:
+            result["message"] = f"확인 버튼 클릭 중 오류: {e}"
+            logger.error(result["message"])
+            return result
+
+        # 5. 랭크 획득 창 확인
+        logger.info("랭크 획득 창 확인 중...")
+        rank_appeared = self.matcher.wait_for_template(rank_reward_screen, timeout=10)
+
+        if not rank_appeared:
+            result["message"] = "랭크 획득 창이 나타나지 않음"
+            logger.warning(result["message"])
+            return result
+
+        result["rank_reward_found"] = True
+        logger.info("랭크 획득 창 출현 확인")
+
+        # 6. 랭크 획득 창의 확인 버튼 클릭
+        logger.info("랭크 획득 창 확인 버튼 찾는 중...")
+        time.sleep(1.0)  # 화면 안정화 대기
+
+        confirm_location = self.matcher.find_template(confirm_button)
+        if not confirm_location:
+            result["message"] = "랭크 획득 창의 확인 버튼을 찾을 수 없습니다"
+            logger.warning(result["message"])
+            return result
+
+        logger.info(f"확인 버튼 발견: {confirm_location}")
+
+        try:
+            clicked = self.controller.click_template(confirm_location, wait_after=3.0)
+            if not clicked:
+                result["message"] = "확인 버튼 클릭 실패"
+                logger.error(result["message"])
+                return result
+
+            result["rank_reward_closed"] = True
+            logger.info("랭크 획득 창 확인 버튼 클릭 성공")
+
+        except Exception as e:
+            result["message"] = f"확인 버튼 클릭 중 오류: {e}"
+            logger.error(result["message"])
+            return result
+
+        # 7. 스테이지 화면 복귀 확인
+        logger.info("스테이지 화면 복귀 확인 중...")
+        time.sleep(2.0)  # 화면 전환 대기
+
+        stage_appeared = self.matcher.wait_for_template(stage_map, timeout=10)
+
+        if stage_appeared:
+            result["returned_to_stage"] = True
             result["success"] = True
-            result["message"] = "데미지 기록 창 출현 확인"
+            result["message"] = "전투 결과 확인 완료 및 스테이지 복귀 성공"
             logger.info(result["message"])
         else:
-            result["message"] = "데미지 기록 창이 나타나지 않음"
+            result["message"] = "스테이지 화면으로 복귀하지 못함"
             logger.warning(result["message"])
 
         return result
