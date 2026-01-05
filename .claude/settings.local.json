@@ -12,7 +12,8 @@
       "Bash(python -m pip:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\ntest: 모듈 테스트 스크립트 추가\n\n- GameController 기본 기능 테스트\n- TemplateMatcher 이미지 인식 및 클릭 테스트\n- TestLogger 결과 로깅 테스트\n- 모든 핵심 모듈 동작 검증 완료\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
