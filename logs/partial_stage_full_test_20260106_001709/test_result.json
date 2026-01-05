@@ -1,0 +1,64 @@
+{
+  "test_name": "partial_stage_full_test",
+  "test_id": "20260106_001709",
+  "start_time": "2026-01-06T00:17:09.823565",
+  "end_time": "2026-01-06T00:17:38.719199",
+  "duration_seconds": 28.895634,
+  "checks": {
+    "출격_버튼_찾기": {
+      "timestamp": "2026-01-06T00:17:27.887791",
+      "passed": true,
+      "message": "위치: Box(left=np.int64(2168), top=np.int64(1219), width=368, height=192)",
+      "details": {}
+    },
+    "출격_버튼_클릭": {
+      "timestamp": "2026-01-06T00:17:32.788216",
+      "passed": true,
+      "message": "클릭 완료",
+      "details": {}
+    },
+    "스테이지_맵_확인": {
+      "timestamp": "2026-01-06T00:17:32.939670",
+      "passed": true,
+      "message": "위치: Box(left=np.int64(0), top=np.int64(0), width=2560, height=1440)",
+      "details": {}
+    },
+    "임무_개시_버튼_찾기": {
+      "timestamp": "2026-01-06T00:17:33.346660",
+      "passed": true,
+      "message": "위치: Box(left=np.int64(2161), top=np.int64(1271), width=357, height=150)",
+      "details": {}
+    },
+    "임무_개시_버튼_클릭": {
+      "timestamp": "2026-01-06T00:17:38.718693",
+      "passed": true,
+      "message": "클릭 완료",
+      "details": {}
+    }
+  },
+  "errors": [],
+  "screenshots": [
+    {
+      "filename": "deploy_button_found_001727_917.png",
+      "path": "c:\\NexonGamesProject\\NexonGamesProject_V2\\logs\\partial_stage_full_test_20260106_001709\\screenshots\\deploy_button_found_001727_917.png",
+      "timestamp": "2026-01-06T00:17:28.181808"
+    },
+    {
+      "filename": "stage_map_found_001732_974.png",
+      "path": "c:\\NexonGamesProject\\NexonGamesProject_V2\\logs\\partial_stage_full_test_20260106_001709\\screenshots\\stage_map_found_001732_974.png",
+      "timestamp": "2026-01-06T00:17:33.203886"
+    },
+    {
+      "filename": "mission_start_button_found_001733_381.png",
+      "path": "c:\\NexonGamesProject\\NexonGamesProject_V2\\logs\\partial_stage_full_test_20260106_001709\\screenshots\\mission_start_button_found_001733_381.png",
+      "timestamp": "2026-01-06T00:17:33.610374"
+    }
+  ],
+  "summary": {
+    "total_checks": 5,
+    "passed_checks": 5,
+    "failed_checks": 0,
+    "total_errors": 0,
+    "total_screenshots": 3
+  }
+}
