@@ -66,7 +66,7 @@ def test_tile_movement():
     print("10초 후 테스트를 시작합니다...\n")
 
     # 카운트다운
-    for i in range(10, 0, -1):
+    for i in range(4, 0, -1):
         print(f"{i}초 남음...")
         time.sleep(1)
 
