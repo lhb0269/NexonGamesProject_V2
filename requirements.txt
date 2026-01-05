@@ -1,0 +1,14 @@
+# 블루 아카이브 자동화 테스트 프로젝트 의존성
+
+# 화면 자동화 및 제어
+pyautogui==0.9.54
+
+# 이미지 처리
+Pillow==10.2.0
+opencv-python==4.9.0.80
+
+# OCR (코스트 인식용)
+pytesseract==0.3.10
+
+# 유틸리티
+python-dateutil==2.8.2
