@@ -1,0 +1,24 @@
+{
+  "test_name": "tile_movement_test",
+  "test_id": "20260106_002309",
+  "start_time": "2026-01-06T00:23:09.489728",
+  "end_time": "2026-01-06T00:23:22.441688",
+  "duration_seconds": 12.95196,
+  "checks": {
+    "발판_탐색": {
+      "timestamp": "2026-01-06T00:23:22.441688",
+      "passed": false,
+      "message": "이동 가능한 발판 없음",
+      "details": {}
+    }
+  },
+  "errors": [],
+  "screenshots": [],
+  "summary": {
+    "total_checks": 1,
+    "passed_checks": 0,
+    "failed_checks": 1,
+    "total_errors": 0,
+    "total_screenshots": 0
+  }
+}

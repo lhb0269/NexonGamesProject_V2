@@ -1,0 +1,47 @@
+{
+  "test_name": "partial_stage_test",
+  "test_id": "20260106_001709",
+  "start_time": "2026-01-06T00:17:09.824566",
+  "end_time": "2026-01-06T00:17:25.753319",
+  "duration_seconds": 15.928753,
+  "checks": {
+    "시작_발판_찾기": {
+      "timestamp": "2026-01-06T00:17:19.965913",
+      "passed": true,
+      "message": "위치: Box(left=np.int64(790), top=np.int64(840), width=250, height=238)",
+      "details": {}
+    },
+    "시작_발판_클릭": {
+      "timestamp": "2026-01-06T00:17:25.318497",
+      "passed": true,
+      "message": "클릭 완료",
+      "details": {}
+    },
+    "편성_화면_확인": {
+      "timestamp": "2026-01-06T00:17:25.457196",
+      "passed": true,
+      "message": "위치: Box(left=np.int64(0), top=np.int64(0), width=2560, height=1440)",
+      "details": {}
+    }
+  },
+  "errors": [],
+  "screenshots": [
+    {
+      "filename": "start_tile_found_001719_996.png",
+      "path": "c:\\NexonGamesProject\\NexonGamesProject_V2\\logs\\partial_stage_test_20260106_001709\\screenshots\\start_tile_found_001719_996.png",
+      "timestamp": "2026-01-06T00:17:20.212856"
+    },
+    {
+      "filename": "formation_screen_found_001725_488.png",
+      "path": "c:\\NexonGamesProject\\NexonGamesProject_V2\\logs\\partial_stage_test_20260106_001709\\screenshots\\formation_screen_found_001725_488.png",
+      "timestamp": "2026-01-06T00:17:25.753319"
+    }
+  ],
+  "summary": {
+    "total_checks": 3,
+    "passed_checks": 3,
+    "failed_checks": 0,
+    "total_errors": 0,
+    "total_screenshots": 2
+  }
+}
