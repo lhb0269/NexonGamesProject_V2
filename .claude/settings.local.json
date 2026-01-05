@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\ndocs: 프로젝트 문서 추가\n\n- CLAUDE.md: 프로젝트 아키텍처 및 개발 가이드\n- README.md: 과제 요구사항 및 구현 가능성 분석\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\ndocs: 프로젝트 문서 추가\n\n- CLAUDE.md: 프로젝트 아키텍처 및 개발 가이드\n- README.md: 과제 요구사항 및 구현 가능성 분석\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git checkout:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 프로젝트 초기 구조 및 설정 추가\n\n- 프로젝트 디렉토리 구조 생성 (src, config, assets, logs, tests)\n- requirements.txt: 필요한 Python 패키지 정의\n- config/settings.py: 프로젝트 전역 설정\n- 각 모듈별 __init__.py 생성\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
