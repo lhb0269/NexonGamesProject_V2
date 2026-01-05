@@ -164,6 +164,11 @@ class StageRunner:
             if not phase_end_result["success"]:
                 overall_success = False
                 logger.warning("Phase 종료 실패")
+
+            # Phase 종료 후 적이 이동해서 전투 시작됐는지 확인
+            if phase_end_result.get("battle_started", False):
+                battle_started = True
+                logger.info("Phase 종료 후 적 이동으로 전투 진입됨")
         else:
             logger.info("\n[3.5단계 스킵] 적이 있는 발판이었음, 전투 진입됨")
 
@@ -397,13 +402,17 @@ class StageRunner:
         return result
 
     def _end_phase(self) -> Dict[str, Any]:
-        """Phase 종료 버튼 클릭"""
+        """Phase 종료 버튼 클릭 및 적 이동 전투 확인"""
         phase_end_button = BUTTONS_DIR / "phase_end_button.png"
+        battle_ui = UI_DIR / "battle_ui.png"
+        stage_map = UI_DIR / "stage_map.png"
 
         result = {
             "success": False,
             "button_found": False,
             "button_clicked": False,
+            "enemy_approached": False,
+            "battle_started": False,
             "message": ""
         }
 
@@ -419,17 +428,46 @@ class StageRunner:
 
         # Phase 종료 버튼 클릭
         try:
-            clicked = self.controller.click_template(button_location, wait_after=2.0)
-            if clicked:
-                result["button_clicked"] = True
-                result["success"] = True
-                result["message"] = "Phase 종료 성공"
-                logger.info(result["message"])
-            else:
+            clicked = self.controller.click_template(button_location, wait_after=3.0)
+            if not clicked:
                 result["message"] = "Phase 종료 버튼 클릭 실패"
                 logger.error(result["message"])
+                return result
+
+            result["button_clicked"] = True
+            logger.info("Phase 종료 버튼 클릭 성공")
+
+            # 3초 대기 후 적 이동으로 인한 전투 발생 확인
+            logger.info("적 이동 확인 중... (3초 대기)")
+            import time
+            time.sleep(3.0)
+
+            # 스테이지 맵 화면이 사라졌는지 확인 (전투 진입 시 사라짐)
+            stage_map_visible = self.matcher.template_exists(stage_map)
+
+            if not stage_map_visible:
+                # 스테이지 맵이 사라짐 → 전투 진입 가능성
+                logger.info("스테이지 맵 화면 사라짐, 전투 UI 확인 중...")
+                battle_ui_appeared = self.matcher.find_template(battle_ui)
+
+                if battle_ui_appeared:
+                    result["enemy_approached"] = True
+                    result["battle_started"] = True
+                    result["success"] = True
+                    result["message"] = "Phase 종료 후 적 이동으로 전투 진입"
+                    logger.info(result["message"])
+                else:
+                    result["success"] = True
+                    result["message"] = "Phase 종료 후 화면 전환 (전투 아님)"
+                    logger.info(result["message"])
+            else:
+                # 스테이지 맵이 여전히 보임 → 전투 없음
+                result["success"] = True
+                result["message"] = "Phase 종료 성공 (적 이동 없음)"
+                logger.info(result["message"])
+
         except Exception as e:
-            result["message"] = f"Phase 종료 버튼 클릭 중 오류: {e}"
+            result["message"] = f"Phase 종료 중 오류: {e}"
             logger.error(result["message"])
 
         return result
