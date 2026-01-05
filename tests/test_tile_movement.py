@@ -54,7 +54,8 @@ def test_tile_movement():
     else:
         print(f"✓ Phase 종료 버튼 이미지 존재: {phase_end_button}")
 
-    matcher = TemplateMatcher()
+    # 낮은 신뢰도로 매처 생성 (0.5)
+    matcher = TemplateMatcher(confidence=0.5)
     controller = GameController()
     logger = TestLogger("tile_movement_test")
 
@@ -70,6 +71,7 @@ def test_tile_movement():
         time.sleep(1)
 
     print("\n[1단계] 발판 찾기 (적 우선 탐색)...")
+    print("신뢰도: 0.5 (낮은 신뢰도로 테스트)")
 
     # 1. 먼저 적이 있는 발판 찾기
     enemy_location = matcher.find_template(enemy_tile)
