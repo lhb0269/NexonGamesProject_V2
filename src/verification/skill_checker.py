@@ -1,36 +1,55 @@
-"""스킬 사용 검증 모듈"""
+"""스킬 사용 검증 모듈 (OCR 통합)"""
 
 import logging
 import time
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
+from PIL import Image
 
 from src.recognition.template_matcher import TemplateMatcher
 from src.automation.game_controller import GameController
+from src.ocr import OCRReader
 from config.settings import (
     SKILL_CHECK_INTERVAL,
     MAX_SKILL_WAIT_TIME,
     ICONS_DIR
+)
+from config.ocr_regions import (
+    BATTLE_COST_VALUE_REGION,
+    BATTLE_COST_MAX_REGION
 )
 
 logger = logging.getLogger(__name__)
 
 
 class SkillChecker:
-    """스킬 사용 검증 클래스"""
+    """스킬 사용 검증 클래스 (OCR 통합)"""
 
     def __init__(
         self,
         matcher: TemplateMatcher,
-        controller: GameController
+        controller: GameController,
+        enable_ocr: bool = False
     ):
         """
         Args:
             matcher: 템플릿 매칭 객체
             controller: 게임 컨트롤러 객체
+            enable_ocr: OCR 코스트 검증 활성화 여부
         """
         self.matcher = matcher
         self.controller = controller
+        self.enable_ocr = enable_ocr
+
+        # OCR 리더 초기화 (enable_ocr=True일 때만)
+        self.ocr_reader = None
+        if self.enable_ocr:
+            try:
+                self.ocr_reader = OCRReader()
+                logger.info("OCR 코스트 검증 활성화됨")
+            except Exception as e:
+                logger.warning(f"OCR 초기화 실패: {e}. 코스트 검증 비활성화됨")
+                self.enable_ocr = False
 
     def verify_skill_usage(
         self,
@@ -209,3 +228,241 @@ class SkillChecker:
             사용 가능하면 True
         """
         return self.matcher.template_exists(skill_icon_template)
+
+    # ========================================
+    # OCR 기반 코스트 검증
+    # ========================================
+
+    def read_current_cost(
+        self,
+        screenshot: Optional[Image.Image] = None
+    ) -> Optional[int]:
+        """
+        현재 코스트 값 읽기 (OCR)
+
+        Args:
+            screenshot: 화면 이미지 (None이면 자동 캡처)
+
+        Returns:
+            코스트 값 또는 None (읽기 실패 시)
+        """
+        if not self.enable_ocr or not self.ocr_reader:
+            logger.warning("OCR이 비활성화되어 있습니다")
+            return None
+
+        try:
+            # 화면 캡처
+            if screenshot is None:
+                screenshot = self.controller.capture_screen()
+
+            # 코스트 영역 추출 및 OCR
+            cost = self.ocr_reader.read_cost_value(
+                screenshot,
+                bbox=BATTLE_COST_VALUE_REGION
+            )
+
+            if cost is not None:
+                logger.info(f"현재 코스트: {cost}")
+            else:
+                logger.warning("코스트 읽기 실패")
+
+            return cost
+
+        except Exception as e:
+            logger.error(f"코스트 읽기 중 오류: {e}")
+            return None
+
+    def verify_cost_consumption(
+        self,
+        skill_cost: int,
+        before_screenshot: Optional[Image.Image] = None,
+        after_screenshot: Optional[Image.Image] = None
+    ) -> Dict[str, Any]:
+        """
+        스킬 사용 전후 코스트 소모 검증
+
+        Args:
+            skill_cost: 예상 스킬 코스트
+            before_screenshot: 스킬 사용 전 화면
+            after_screenshot: 스킬 사용 후 화면
+
+        Returns:
+            검증 결과 딕셔너리
+            {
+                "success": bool,
+                "cost_before": Optional[int],
+                "cost_after": Optional[int],
+                "consumed": Optional[int],
+                "expected_cost": int,
+                "match": bool,
+                "message": str
+            }
+        """
+        result = {
+            "success": False,
+            "cost_before": None,
+            "cost_after": None,
+            "consumed": None,
+            "expected_cost": skill_cost,
+            "match": False,
+            "message": ""
+        }
+
+        if not self.enable_ocr or not self.ocr_reader:
+            result["message"] = "OCR이 비활성화되어 있습니다"
+            return result
+
+        try:
+            # 사용 전 코스트 읽기
+            if before_screenshot is None:
+                before_screenshot = self.controller.capture_screen()
+
+            cost_before = self.read_current_cost(before_screenshot)
+            result["cost_before"] = cost_before
+
+            if cost_before is None:
+                result["message"] = "사용 전 코스트 읽기 실패"
+                return result
+
+            # 코스트 부족 체크
+            if cost_before < skill_cost:
+                result["message"] = (
+                    f"코스트 부족: 현재 {cost_before}, 필요 {skill_cost}"
+                )
+                return result
+
+            # 스킬 사용 후 화면 캡처 필요
+            if after_screenshot is None:
+                logger.warning("사용 후 화면 없음. 수동으로 캡처 필요")
+                result["message"] = "사용 후 화면 필요"
+                return result
+
+            # 사용 후 코스트 읽기
+            cost_after = self.read_current_cost(after_screenshot)
+            result["cost_after"] = cost_after
+
+            if cost_after is None:
+                result["message"] = "사용 후 코스트 읽기 실패"
+                return result
+
+            # 소모량 계산
+            consumed = cost_before - cost_after
+            result["consumed"] = consumed
+
+            # 검증
+            result["match"] = (consumed == skill_cost)
+            result["success"] = result["match"]
+
+            if result["match"]:
+                result["message"] = (
+                    f"코스트 소모 확인: {cost_before} → {cost_after} "
+                    f"(소모: {consumed})"
+                )
+                logger.info(result["message"])
+            else:
+                result["message"] = (
+                    f"코스트 불일치: 예상 {skill_cost}, 실제 {consumed}"
+                )
+                logger.warning(result["message"])
+
+        except Exception as e:
+            result["message"] = f"코스트 검증 중 오류: {e}"
+            logger.error(result["message"])
+
+        return result
+
+    def verify_skill_with_cost(
+        self,
+        skill_icon_template: Path | str,
+        skill_cost: int,
+        student_name: str = "Unknown",
+        wait_for_ready: bool = True,
+        max_wait: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """
+        스킬 사용 + 코스트 소모 통합 검증
+
+        Args:
+            skill_icon_template: 스킬 아이콘 이미지
+            skill_cost: 예상 스킬 코스트
+            student_name: 학생 이름
+            wait_for_ready: 스킬 준비 대기 여부
+            max_wait: 최대 대기 시간
+
+        Returns:
+            검증 결과 딕셔너리
+        """
+        result = {
+            "success": False,
+            "skill_used": False,
+            "cost_verified": False,
+            "student_name": student_name,
+            "skill_cost": skill_cost,
+            "message": ""
+        }
+
+        # 1. 스킬 사용 전 코스트 확인
+        cost_check = None
+        before_screen = None
+
+        if self.enable_ocr:
+            before_screen = self.controller.capture_screen()
+            current_cost = self.read_current_cost(before_screen)
+
+            if current_cost is not None and current_cost < skill_cost:
+                result["message"] = (
+                    f"[{student_name}] 코스트 부족: "
+                    f"현재 {current_cost}, 필요 {skill_cost}"
+                )
+                logger.warning(result["message"])
+                return result
+
+        # 2. 스킬 사용
+        skill_result = self.verify_skill_usage(
+            skill_icon_template=skill_icon_template,
+            student_name=student_name,
+            wait_for_ready=wait_for_ready,
+            max_wait=max_wait
+        )
+
+        result["skill_used"] = skill_result["success"]
+
+        if not skill_result["success"]:
+            result["message"] = skill_result["message"]
+            return result
+
+        # 3. 스킬 사용 후 코스트 검증
+        if self.enable_ocr:
+            time.sleep(0.5)  # 코스트 UI 업데이트 대기
+            after_screen = self.controller.capture_screen()
+
+            cost_check = self.verify_cost_consumption(
+                skill_cost=skill_cost,
+                before_screenshot=before_screen,
+                after_screenshot=after_screen
+            )
+
+            result["cost_verified"] = cost_check["success"]
+            result["cost_details"] = cost_check
+
+            if not cost_check["success"]:
+                result["message"] = (
+                    f"[{student_name}] 스킬 사용됨, "
+                    f"하지만 코스트 검증 실패: {cost_check['message']}"
+                )
+                logger.warning(result["message"])
+                return result
+
+        # 4. 전체 성공
+        result["success"] = True
+        if self.enable_ocr:
+            result["message"] = (
+                f"[{student_name}] 스킬 사용 및 코스트 소모 확인 완료"
+            )
+        else:
+            result["message"] = (
+                f"[{student_name}] 스킬 사용 완료 (코스트 검증 비활성화)"
+            )
+
+        logger.info(result["message"])
+        return result
