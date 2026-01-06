@@ -631,17 +631,17 @@ class SkillChecker:
             logger.info(f"[{student_name}] 스킬 버튼 클릭: {button_position}")
             self.controller.click(
                 x=button_position[0],
-                y=button_position[1],
-                wait_after=SKILL_CLICK_TO_TARGET_WAIT
+                y=button_position[1]
             )
+            time.sleep(SKILL_CLICK_TO_TARGET_WAIT)
 
             # 5. 화면 중앙 클릭 (타겟 설정)
             logger.info(f"[{student_name}] 타겟 설정: ({SCREEN_CENTER_X}, {SCREEN_CENTER_Y})")
             self.controller.click(
                 x=SCREEN_CENTER_X,
-                y=SCREEN_CENTER_Y,
-                wait_after=TARGET_CLICK_TO_COST_UPDATE_WAIT
+                y=SCREEN_CENTER_Y
             )
+            time.sleep(TARGET_CLICK_TO_COST_UPDATE_WAIT)
 
             # 6. 사용 후 코스트 읽기
             screenshot_after = self.controller.screenshot()
