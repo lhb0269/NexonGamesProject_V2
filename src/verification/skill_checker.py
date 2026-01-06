@@ -23,7 +23,6 @@ from config.skill_settings import (
     get_skill_cost_region,
     SCREEN_CENTER_X,
     SCREEN_CENTER_Y,
-    SKILL_CLICK_TO_TARGET_WAIT,
     TARGET_CLICK_TO_COST_UPDATE_WAIT
 )
 
@@ -532,18 +531,16 @@ class SkillChecker:
         student_name: str = "Unknown"
     ) -> Dict[str, Any]:
         """
-        스킬 버튼 클릭 → 화면 중앙 타겟 → 코스트 소모 검증
+        스킬 버튼 드래그 → 화면 중앙 타겟 → 코스트 소모 검증
 
         전체 플로우:
         1. 스킬 버튼의 코스트 읽기 (OCR)
         2. 현재 코스트 읽기 (사용 전)
         3. 현재 코스트 >= 스킬 코스트 체크
-        4. 스킬 버튼 클릭
-        5. 0.5초 대기 (스킬 타겟 모드 진입)
-        6. 화면 중앙 클릭 (타겟 설정)
-        7. 1.0초 대기 (코스트 UI 업데이트)
-        8. 현재 코스트 읽기 (사용 후)
-        9. 코스트 차감 검증: (사용 전 - 사용 후) == 스킬 코스트
+        4. 스킬 버튼에서 화면 중앙으로 드래그 (0.5초 duration)
+        5. 1.0초 대기 (코스트 UI 업데이트)
+        6. 현재 코스트 읽기 (사용 후)
+        7. 코스트 차감 검증: (사용 전 - 사용 후) == 스킬 코스트
 
         Args:
             slot_index: 스킬 슬롯 인덱스 (0=슬롯1, 1=슬롯2, 2=슬롯3)
@@ -627,19 +624,14 @@ class SkillChecker:
 
             result["sufficient_cost"] = True
 
-            # 4. 스킬 버튼 클릭
-            logger.info(f"[{student_name}] 스킬 버튼 클릭: {button_position}")
-            self.controller.click(
-                x=button_position[0],
-                y=button_position[1]
-            )
-            time.sleep(SKILL_CLICK_TO_TARGET_WAIT)
-
-            # 5. 화면 중앙 클릭 (타겟 설정)
-            logger.info(f"[{student_name}] 타겟 설정: ({SCREEN_CENTER_X}, {SCREEN_CENTER_Y})")
-            self.controller.click(
-                x=SCREEN_CENTER_X,
-                y=SCREEN_CENTER_Y
+            # 4. 스킬 버튼에서 화면 중앙으로 드래그 (스킬 타겟 설정)
+            logger.info(f"[{student_name}] 스킬 드래그: {button_position} → ({SCREEN_CENTER_X}, {SCREEN_CENTER_Y})")
+            self.controller.drag(
+                start_x=button_position[0],
+                start_y=button_position[1],
+                end_x=SCREEN_CENTER_X,
+                end_y=SCREEN_CENTER_Y,
+                duration=0.5  # 0.5초 동안 드래그
             )
             time.sleep(TARGET_CLICK_TO_COST_UPDATE_WAIT)
 
