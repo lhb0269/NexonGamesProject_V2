@@ -18,6 +18,14 @@ from config.ocr_regions import (
     BATTLE_COST_VALUE_REGION,
     BATTLE_COST_MAX_REGION
 )
+from config.skill_settings import (
+    get_skill_button_position,
+    get_skill_cost_region,
+    SCREEN_CENTER_X,
+    SCREEN_CENTER_Y,
+    SKILL_CLICK_TO_TARGET_WAIT,
+    TARGET_CLICK_TO_COST_UPDATE_WAIT
+)
 
 logger = logging.getLogger(__name__)
 
@@ -465,4 +473,212 @@ class SkillChecker:
             )
 
         logger.info(result["message"])
+        return result
+
+    # ========================================
+    # 스킬 버튼 직접 클릭 방식 (OCR 코스트 읽기)
+    # ========================================
+
+    def read_skill_cost_from_button(
+        self,
+        slot_index: int,
+        screenshot: Optional[Image.Image] = None
+    ) -> Optional[int]:
+        """
+        스킬 버튼 하단의 코스트 값 읽기 (OCR)
+
+        Args:
+            slot_index: 스킬 슬롯 인덱스 (0=슬롯1, 1=슬롯2, 2=슬롯3)
+            screenshot: 화면 이미지 (None이면 자동 캡처)
+
+        Returns:
+            코스트 값 또는 None (읽기 실패 시)
+        """
+        if not self.enable_ocr or not self.ocr_reader:
+            logger.warning("OCR이 비활성화되어 있습니다")
+            return None
+
+        # 슬롯 인덱스 검증
+        cost_region = get_skill_cost_region(slot_index)
+        if cost_region is None:
+            logger.error(f"잘못된 슬롯 인덱스: {slot_index}")
+            return None
+
+        try:
+            # 화면 캡처
+            if screenshot is None:
+                screenshot = self.controller.screenshot()
+
+            # 스킬 코스트 영역 OCR
+            skill_cost = self.ocr_reader.read_cost_value(
+                screenshot,
+                bbox=cost_region
+            )
+
+            if skill_cost is not None:
+                logger.info(f"슬롯 {slot_index + 1} 스킬 코스트: {skill_cost}")
+            else:
+                logger.warning(f"슬롯 {slot_index + 1} 스킬 코스트 읽기 실패")
+
+            return skill_cost
+
+        except Exception as e:
+            logger.error(f"슬롯 {slot_index + 1} 스킬 코스트 읽기 중 오류: {e}")
+            return None
+
+    def use_skill_and_verify(
+        self,
+        slot_index: int,
+        student_name: str = "Unknown"
+    ) -> Dict[str, Any]:
+        """
+        스킬 버튼 클릭 → 화면 중앙 타겟 → 코스트 소모 검증
+
+        전체 플로우:
+        1. 스킬 버튼의 코스트 읽기 (OCR)
+        2. 현재 코스트 읽기 (사용 전)
+        3. 현재 코스트 >= 스킬 코스트 체크
+        4. 스킬 버튼 클릭
+        5. 0.5초 대기 (스킬 타겟 모드 진입)
+        6. 화면 중앙 클릭 (타겟 설정)
+        7. 1.0초 대기 (코스트 UI 업데이트)
+        8. 현재 코스트 읽기 (사용 후)
+        9. 코스트 차감 검증: (사용 전 - 사용 후) == 스킬 코스트
+
+        Args:
+            slot_index: 스킬 슬롯 인덱스 (0=슬롯1, 1=슬롯2, 2=슬롯3)
+            student_name: 학생 이름 (로깅용)
+
+        Returns:
+            검증 결과 딕셔너리
+            {
+                "success": bool,
+                "student_name": str,
+                "slot_index": int,
+                "skill_cost": Optional[int],
+                "cost_before": Optional[int],
+                "cost_after": Optional[int],
+                "consumed": Optional[int],
+                "sufficient_cost": bool,
+                "cost_matched": bool,
+                "message": str
+            }
+        """
+        result = {
+            "success": False,
+            "student_name": student_name,
+            "slot_index": slot_index,
+            "skill_cost": None,
+            "cost_before": None,
+            "cost_after": None,
+            "consumed": None,
+            "sufficient_cost": False,
+            "cost_matched": False,
+            "message": ""
+        }
+
+        logger.info(f"[{student_name}] 슬롯 {slot_index + 1} 스킬 사용 시작")
+
+        # OCR 필수 체크
+        if not self.enable_ocr or not self.ocr_reader:
+            result["message"] = "OCR이 비활성화되어 있습니다"
+            logger.error(result["message"])
+            return result
+
+        # 슬롯 위치 가져오기
+        button_position = get_skill_button_position(slot_index)
+        if button_position is None:
+            result["message"] = f"잘못된 슬롯 인덱스: {slot_index}"
+            logger.error(result["message"])
+            return result
+
+        try:
+            # 1. 스킬 버튼 코스트 읽기
+            screenshot = self.controller.screenshot()
+            skill_cost = self.read_skill_cost_from_button(slot_index, screenshot)
+
+            if skill_cost is None:
+                result["message"] = f"[{student_name}] 슬롯 {slot_index + 1} 스킬 코스트 읽기 실패"
+                logger.error(result["message"])
+                return result
+
+            result["skill_cost"] = skill_cost
+            logger.info(f"[{student_name}] 스킬 요구 코스트: {skill_cost}")
+
+            # 2. 현재 코스트 읽기 (사용 전)
+            cost_before = self.read_current_cost(screenshot)
+
+            if cost_before is None:
+                result["message"] = f"[{student_name}] 사용 전 코스트 읽기 실패"
+                logger.error(result["message"])
+                return result
+
+            result["cost_before"] = cost_before
+            logger.info(f"[{student_name}] 사용 전 코스트: {cost_before}")
+
+            # 3. 코스트 부족 체크
+            if cost_before < skill_cost:
+                result["message"] = (
+                    f"[{student_name}] 코스트 부족: "
+                    f"현재 {cost_before}, 필요 {skill_cost}"
+                )
+                logger.warning(result["message"])
+                return result
+
+            result["sufficient_cost"] = True
+
+            # 4. 스킬 버튼 클릭
+            logger.info(f"[{student_name}] 스킬 버튼 클릭: {button_position}")
+            self.controller.click(
+                x=button_position[0],
+                y=button_position[1],
+                wait_after=SKILL_CLICK_TO_TARGET_WAIT
+            )
+
+            # 5. 화면 중앙 클릭 (타겟 설정)
+            logger.info(f"[{student_name}] 타겟 설정: ({SCREEN_CENTER_X}, {SCREEN_CENTER_Y})")
+            self.controller.click(
+                x=SCREEN_CENTER_X,
+                y=SCREEN_CENTER_Y,
+                wait_after=TARGET_CLICK_TO_COST_UPDATE_WAIT
+            )
+
+            # 6. 사용 후 코스트 읽기
+            screenshot_after = self.controller.screenshot()
+            cost_after = self.read_current_cost(screenshot_after)
+
+            if cost_after is None:
+                result["message"] = f"[{student_name}] 사용 후 코스트 읽기 실패"
+                logger.warning(result["message"])
+                # 코스트 읽기 실패해도 스킬 사용은 했을 수 있음
+                return result
+
+            result["cost_after"] = cost_after
+            logger.info(f"[{student_name}] 사용 후 코스트: {cost_after}")
+
+            # 7. 코스트 소모 검증
+            consumed = cost_before - cost_after
+            result["consumed"] = consumed
+
+            if consumed == skill_cost:
+                result["cost_matched"] = True
+                result["success"] = True
+                result["message"] = (
+                    f"[{student_name}] 스킬 사용 성공: "
+                    f"{cost_before} → {cost_after} (소모: {consumed})"
+                )
+                logger.info(result["message"])
+            else:
+                result["message"] = (
+                    f"[{student_name}] 코스트 불일치: "
+                    f"예상 {skill_cost}, 실제 소모 {consumed}"
+                )
+                logger.warning(result["message"])
+
+        except Exception as e:
+            result["message"] = f"[{student_name}] 스킬 사용 중 오류: {e}"
+            logger.error(result["message"])
+            import traceback
+            traceback.print_exc()
+
         return result
