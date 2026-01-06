@@ -40,8 +40,15 @@ class OCRReader:
                 "설치: pip install pytesseract"
             )
 
+        # Tesseract 경로 설정 (Windows 기본 경로 자동 인식)
         if tesseract_cmd:
             pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+        else:
+            # Windows 기본 설치 경로
+            import os
+            default_path = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+            if os.path.exists(default_path):
+                pytesseract.pytesseract.tesseract_cmd = default_path
 
     # ========================================
     # 이미지 전처리
@@ -110,7 +117,7 @@ class OCRReader:
         image: Image.Image,
         lang: str = 'kor+eng',
         preprocess: bool = True,
-        config: str = '--psm 7'
+        config: str = '--psm 6'
     ) -> str:
         """
         이미지에서 텍스트 읽기 (한글 + 영어)
@@ -120,8 +127,8 @@ class OCRReader:
             lang: 언어 설정 ('kor', 'eng', 'kor+eng')
             preprocess: 전처리 수행 여부
             config: Tesseract 설정
+                   --psm 6: 단일 텍스트 블록 (기본, 한글 인식률 최고)
                    --psm 7: 단일 텍스트 라인
-                   --psm 6: 단일 텍스트 블록
 
         Returns:
             추출된 텍스트 (공백 제거됨)
