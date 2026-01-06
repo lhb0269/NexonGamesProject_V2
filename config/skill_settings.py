@@ -44,7 +44,7 @@ SKILL_COST_SLOT_3 = (2174, 1304, 2225, 1350)
 # ========================================
 
 # 스킬 버튼 클릭 후 타겟 설정까지 대기
-SKILL_CLICK_TO_TARGET_WAIT = 0.5
+SKILL_CLICK_TO_TARGET_WAIT = 1.0
 
 # 타겟 클릭 후 코스트 업데이트까지 대기
 TARGET_CLICK_TO_COST_UPDATE_WAIT = 1.0
