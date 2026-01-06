@@ -229,34 +229,39 @@ class OCRReader:
         Returns:
             추출된 정수 또는 None (실패 시)
         """
+        # 여러 PSM 모드 시도 (숫자 인식에 효과적인 순서)
+        psm_modes = [7, 8, 6, 13]  # 단일 라인, 단일 단어, 블록, 원시 라인
+
         for attempt in range(retries):
             if preprocess:
                 processed = self.preprocess_image(image)
             else:
                 processed = image
 
-            try:
-                # Tesseract 설정: 숫자만 인식
-                config = '--psm 7 -c tessedit_char_whitelist=0123456789'
-                text = pytesseract.image_to_string(processed, config=config)
+            # PSM 모드 순회
+            for psm in psm_modes:
+                try:
+                    # Tesseract 설정: 숫자만 인식
+                    config = f'--psm {psm} -c tessedit_char_whitelist=0123456789'
+                    text = pytesseract.image_to_string(processed, config=config)
 
-                # 숫자 추출
-                numbers = re.findall(r'\d+', text)
-                if not numbers:
+                    # 숫자 추출
+                    numbers = re.findall(r'\d+', text)
+                    if not numbers:
+                        continue
+
+                    value = int(numbers[0])
+
+                    # 범위 검증
+                    if min_value is not None and value < min_value:
+                        continue
+                    if max_value is not None and value > max_value:
+                        continue
+
+                    return value
+
+                except (ValueError, IndexError):
                     continue
-
-                value = int(numbers[0])
-
-                # 범위 검증
-                if min_value is not None and value < min_value:
-                    continue
-                if max_value is not None and value > max_value:
-                    continue
-
-                return value
-
-            except (ValueError, IndexError):
-                continue
 
             # 재시도 간 대기
             if attempt < retries - 1:
