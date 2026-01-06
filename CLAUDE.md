@@ -124,22 +124,31 @@ NexonGamesProject_V2/
      └─ 3.5단계로
 
 3.5. [빈 발판일 경우만] Phase 종료
-   └─ phase_end_button.png 탐색 및 클릭
+   ├─ phase_end_button.png 탐색 및 클릭
+   ├─ 3초 대기 (적 이동 시간)
+   └─ 적 접근 시 전투 진입 감지
 
 4. 전투 진입 확인
-   └─ battle_ui.png 출현 대기 (3단계에서 확인 안 됐을 경우)
+   └─ battle_ui.png 출현 대기 (3/3.5단계에서 확인 안 됐을 경우)
 
 5. 전투 종료 확인
    └─ victory.png 출현 대기 (최대 120초)
 
-6. 통계 버튼 클릭 → 데미지 기록 확인
-   ├─ battle_log_button.png 탐색 및 클릭
-   └─ damage_report.png 출현 대기
+6. 전투 결과 확인 및 스테이지 복귀
+   ├─ battle_log_button.png 탐색 및 클릭 (통계 버튼)
+   ├─ damage_report.png 출현 대기 (데미지 기록 창)
+   ├─ 3초 대기 (데미지 확인)
+   ├─ damage_report_close_button.png 클릭 (닫기)
+   ├─ victory_confirm.png 클릭 (Victory 화면 확인 버튼)
+   ├─ rank_reward.png 출현 대기 (랭크 획득 창)
+   ├─ rank_reward_confirm_button.png 클릭 (확인)
+   └─ stage_map.png 복귀 확인
 ```
 
 ### 조건부 분기 로직
 - **적 발판 감지 시**: 즉시 전투 진입 → Phase 종료 스킵
 - **빈 발판 감지 시**: 학생 이동 → Phase 종료 버튼 클릭 필요
+- **Phase 종료 후 적 접근**: 3초 대기 후 스테이지 맵 소멸 확인 → 전투 진입
 
 ## 현재 구현 상태
 
@@ -150,36 +159,41 @@ NexonGamesProject_V2/
    - TestLogger (JSON 로깅 + 스크린샷)
 
 2. **검증 모듈**
-   - MovementChecker
-   - BattleChecker
+   - MovementChecker (발판 이동 검증)
+   - BattleChecker (전투 진입/종료 검증)
    - SkillChecker (구현됨, 현재 시나리오에서 미사용)
-   - RewardChecker
+   - RewardChecker (보상 획득 검증)
 
-3. **StageRunner**
-   - 전체 플로우 통합 완료
-   - 조건부 분기 로직 구현 (적 유무 자동 판단)
+3. **StageRunner 전체 플로우**
+   - 단계 1-2.5: 시작 → 편성 → 출격 → 맵 → 임무 개시
+   - 단계 3: 발판 클릭 (적/빈 발판 자동 판단)
+   - 단계 3.5: Phase 종료 + 적 접근 감지
+   - 단계 4: 전투 진입 확인
+   - 단계 5: 전투 종료 확인 (Victory)
+   - 단계 6: 전투 결과 확인 (통계 → 데미지 기록 → 랭크 획득 → 스테이지 복귀)
 
 4. **테스트 스크립트**
    - test_modules.py: 기본 모듈 동작 테스트
-   - test_partial_stage.py: 시작 → 편성 → 출격 → 맵 → 임무 개시 (5/5 통과)
-   - test_tile_movement.py: 발판 이동 단독 테스트 (작성 완료)
+   - test_partial_stage.py: 단계 1-2.5 테스트 (5/5 통과)
+   - test_tile_movement.py: 발판 이동 단독 테스트 (신뢰도 0.5 조정)
+   - test_battle_result.py: 전투 결과 확인 플로우 테스트 (단계 6)
 
 ### 🔄 진행 중
-- 발판 이동 테스트 (템플릿 이미지 조정 필요)
+- 템플릿 이미지 준비 및 검증
+- 전체 플로우 end-to-end 테스트
 
 ### ⏳ 미완료
-- 전투 종료 후 단계 (Victory → 통계 → 데미지 기록)
-- 전체 플로우 end-to-end 테스트
+- 전체 플로우 통합 테스트 (main.py 실행)
 
 ## 개발 우선순위
 
 ### Phase 1 - 핵심 기능 (필수)
 1. ✅ 템플릿 매칭 시스템
 2. ✅ 발판 이동 (시작 → 편성 → 출격 → 맵 → 임무 개시)
-3. 🔄 발판 클릭 (적/빈 발판 자동 판단)
-4. ⏳ 전투 진입 감지
-5. ⏳ 전투 종료 감지 (Victory)
-6. ⏳ 데미지 기록 확인 (통계 버튼)
+3. ✅ 발판 클릭 (적/빈 발판 자동 판단)
+4. ✅ 전투 진입 감지 (Phase 종료 후 적 접근 포함)
+5. ✅ 전투 종료 감지 (Victory)
+6. ✅ 전투 결과 확인 (통계 → 데미지 기록 → 랭크 획득 → 스테이지 복귀)
 
 ### Phase 2 - 추가 기능 (선택)
 - ❌ 스킬 사용 (현재 시나리오에서 제외)
@@ -217,22 +231,27 @@ NexonGamesProject_V2/
 
 ### 필수 템플릿 목록
 **buttons/**
-- deploy_button.png (출격 버튼)
-- mission_start_button.png (임무 개시 버튼)
-- phase_end_button.png (Phase 종료 버튼)
-- battle_log_button.png (통계 버튼) - 미준비
+- ✅ deploy_button.png (출격 버튼)
+- ✅ mission_start_button.png (임무 개시 버튼)
+- ✅ phase_end_button.png (Phase 종료 버튼)
+- ✅ battle_log_button.png (통계 버튼)
+- ✅ damage_report_close_button.png (데미지 기록 닫기 버튼)
+- ✅ victory_confirm.png (Victory 확인 버튼)
+- ✅ rank_reward_confirm_button.png (랭크 획득 확인 버튼)
 
 **icons/**
-- start_tile.png (시작 발판)
-- enemy_tile.png (적 있는 발판) - 조정 필요
-- empty_tile.png (빈 발판) - 조정 필요
+- ✅ start_tile.png (시작 발판)
+- ✅ enemy_tile.png (적 있는 발판, 신뢰도 0.5)
+- ✅ empty_tile.png (빈 발판, 신뢰도 0.5)
 
 **ui/**
-- formation_screen.png (편성 화면)
-- stage_map.png (스테이지 맵)
-- battle_ui.png (전투 UI) - 검증 필요
-- victory.png (승리 화면) - 미준비
-- damage_report.png (데미지 기록 창) - 미준비
+- ✅ formation_screen.png (편성 화면)
+- ✅ stage_map.png (스테이지 맵)
+- ✅ stage_map_2.png (스테이지 맵 복귀 확인용)
+- ✅ battle_ui.png (전투 UI)
+- ✅ victory.png (승리 화면)
+- ✅ damage_report.png (데미지 기록 창)
+- ✅ rank_reward.png (랭크 획득 창)
 
 ### 템플릿 캡처 가이드
 - 게임 해상도 고정
@@ -250,5 +269,5 @@ NexonGamesProject_V2/
 
 ## 일정
 - **마감일**: 2026년 1월 13일 (월요일)
-- **현재 상태**: Phase 1 진행 중 (발판 이동 테스트)
-- **다음 단계**: 발판 이동 완료 → 전투 종료 → 데미지 기록
+- **현재 상태**: Phase 1 완료, 전체 플로우 구현 완료
+- **다음 단계**: 전체 플로우 통합 테스트 및 최종 검증

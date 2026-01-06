@@ -47,9 +47,9 @@
    ✅ 구현 완료 (test_partial_stage.py 검증 완료)
 
 3. 발판 클릭 (적 유무 자동 판단)
-   - 적이 있는 발판 우선 탐색
-   - 없으면 빈 발판 탐색
-   🔄 구현 완료, 템플릿 조정 필요
+   - 적이 있는 발판 우선 탐색 (enemy_tile.png, 신뢰도 0.5)
+   - 없으면 빈 발판 탐색 (empty_tile.png, 신뢰도 0.5)
+   ✅ 구현 완료 (test_tile_movement.py)
 
    → 적 발판일 경우:
      - 전투 진입 (battle_ui.png 출현)
@@ -60,48 +60,62 @@
      - 3.5단계 진행
 
 3.5. [빈 발판일 경우만] Phase 종료 버튼 클릭
-   🔄 구현 완료, 미테스트
+   ✅ 구현 완료 (적 접근 감지 포함)
+   - Phase 종료 후 3초 대기
+   - 적 이동으로 인한 전투 진입 자동 감지
 
 4. 전투 진입 확인
-   ⏳ 구현 완료, 미테스트
+   ✅ 구현 완료 (조건부 실행)
 
 5. 전투 종료 확인 (Victory 화면)
-   ⏳ 구현 완료, 템플릿 미준비
+   ✅ 구현 완료
 
-6. 통계 버튼 클릭 → 데미지 기록 창 확인
-   ⏳ 구현 완료, 템플릿 미준비
+6. 전투 결과 확인 및 스테이지 복귀
+   ✅ 구현 완료 (test_battle_result.py)
+   - 통계 버튼 클릭 (battle_log_button.png)
+   - 데미지 기록 창 확인 (damage_report.png)
+   - 3초 대기 후 닫기 버튼 클릭 (damage_report_close_button.png)
+   - Victory 확인 버튼 클릭 (victory_confirm.png)
+   - 랭크 획득 창 확인 (rank_reward.png)
+   - 랭크 획득 확인 버튼 클릭 (rank_reward_confirm_button.png)
+   - 스테이지 맵 복귀 확인 (stage_map_2.png)
 ```
 
 ## 구현 상태
 
 ### ✅ 완료
 - **기본 인프라**
-  - TemplateMatcher: pyautogui 템플릿 매칭 래퍼
+  - TemplateMatcher: pyautogui 템플릿 매칭 래퍼 (신뢰도 조정 가능)
   - GameController: 마우스/키보드 제어
   - TestLogger: JSON 로깅 + 스크린샷 저장
 
 - **검증 모듈**
   - MovementChecker (발판 이동 검증)
   - BattleChecker (전투 진입/종료 검증)
-  - RewardChecker (보상/데미지 기록 검증)
+  - RewardChecker (데미지 기록 검증)
   - SkillChecker (구현됨, 현재 미사용)
 
-- **StageRunner**
-  - 전체 플로우 오케스트레이션
-  - 조건부 분기 로직 (적 유무 자동 판단)
+- **StageRunner 전체 플로우**
+  - 단계 1-2.5: 시작 → 편성 → 출격 → 맵 → 임무 개시
+  - 단계 3: 발판 클릭 (적/빈 발판 자동 판단)
+  - 단계 3.5: Phase 종료 + 적 접근 감지
+  - 단계 4: 전투 진입 확인 (조건부)
+  - 단계 5: 전투 종료 확인 (Victory)
+  - 단계 6: 전투 결과 확인 (통계 → 데미지 기록 → 랭크 획득 → 스테이지 복귀)
 
 - **테스트 스크립트**
   - test_modules.py: 기본 모듈 테스트
-  - test_partial_stage.py: 1~2.5단계 통합 테스트 **(5/5 통과)**
-  - test_tile_movement.py: 발판 이동 단독 테스트
+  - test_partial_stage.py: 단계 1-2.5 통합 테스트 **(5/5 통과)**
+  - test_tile_movement.py: 발판 이동 단독 테스트 (신뢰도 0.5)
+  - test_battle_result.py: 전투 결과 확인 플로우 테스트 (단계 6)
 
 ### 🔄 진행 중
-- 발판 이동 테스트 (enemy_tile.png, empty_tile.png 조정 필요)
+- 템플릿 이미지 검증 및 미세 조정
+- 전체 플로우 end-to-end 통합 테스트
 
-### ⏳ 미완료
-- 전투 종료 확인 (victory.png 템플릿 필요)
-- 데미지 기록 확인 (battle_log_button.png, damage_report.png 템플릿 필요)
-- 전체 플로우 end-to-end 테스트
+### ⏳ 다음 단계
+- main.py를 통한 전체 시나리오 실행 및 검증
+- 최종 테스트 결과 문서화
 
 ## 검증 항목별 구현 분석
 
@@ -159,23 +173,28 @@ pip install -r requirements.txt
 ### 2. 템플릿 이미지 준비
 다음 템플릿 이미지를 캡처하여 `assets/templates/` 디렉토리에 저장:
 
-**필수 (현재 준비됨):**
-- buttons/deploy_button.png
-- buttons/mission_start_button.png
-- buttons/phase_end_button.png
-- icons/start_tile.png
-- ui/formation_screen.png
-- ui/stage_map.png
+**buttons/ (버튼 이미지):**
+- ✅ deploy_button.png (출격 버튼)
+- ✅ mission_start_button.png (임무 개시 버튼)
+- ✅ phase_end_button.png (Phase 종료 버튼)
+- ✅ battle_log_button.png (통계 버튼)
+- ✅ damage_report_close_button.png (데미지 기록 닫기 버튼)
+- ✅ victory_confirm.png (Victory 확인 버튼)
+- ✅ rank_reward_confirm_button.png (랭크 획득 확인 버튼)
 
-**조정 필요:**
-- icons/enemy_tile.png
-- icons/empty_tile.png
-- ui/battle_ui.png
+**icons/ (발판 아이콘):**
+- ✅ start_tile.png (시작 발판)
+- ✅ enemy_tile.png (적 있는 발판, 신뢰도 0.5)
+- ✅ empty_tile.png (빈 발판, 신뢰도 0.5)
 
-**미준비:**
-- buttons/battle_log_button.png
-- ui/victory.png
-- ui/damage_report.png
+**ui/ (UI 화면):**
+- ✅ formation_screen.png (편성 화면)
+- ✅ stage_map.png (스테이지 맵)
+- ✅ stage_map_2.png (스테이지 맵 복귀 확인용)
+- ✅ battle_ui.png (전투 UI)
+- ✅ victory.png (승리 화면)
+- ✅ damage_report.png (데미지 기록 창)
+- ✅ rank_reward.png (랭크 획득 창)
 
 ### 3. 테스트 실행
 
@@ -194,7 +213,12 @@ python tests/test_partial_stage.py
 python tests/test_tile_movement.py
 ```
 
-**전체 플로우 실행 (미완성):**
+**전투 결과 확인 테스트:**
+```bash
+python tests/test_battle_result.py
+```
+
+**전체 플로우 실행:**
 ```bash
 python main.py
 ```
@@ -218,10 +242,20 @@ python main.py
 
 ### test_tile_movement.py (최근 실행)
 ```
-✗ 0/1 검증 항목 통과
-- 발판_탐색: FAIL (이동 가능한 발판 없음)
+✓ 발판 이동 테스트 통과
+- 신뢰도 0.5로 조정 후 정상 작동
+- enemy_tile.png / empty_tile.png 인식 개선
+```
 
-원인: 템플릿 이미지 불일치 (enemy_tile.png, empty_tile.png 조정 필요)
+### test_battle_result.py (구현 완료)
+```
+전투 결과 확인 플로우 테스트 스크립트
+- Victory 화면 확인
+- 통계 버튼 클릭
+- 데미지 기록 창 확인 및 닫기
+- Victory 확인 버튼 클릭
+- 랭크 획득 창 확인 및 닫기
+- 스테이지 맵 복귀 확인
 ```
 
 ## 프로젝트 구조
@@ -248,9 +282,10 @@ NexonGamesProject_V2/
 │       └── ui/
 ├── logs/                         # 테스트 결과 (JSON + 스크린샷)
 ├── tests/
-│   ├── test_modules.py
-│   ├── test_partial_stage.py
-│   └── test_tile_movement.py
+│   ├── test_modules.py          # 기본 모듈 테스트
+│   ├── test_partial_stage.py    # 단계 1-2.5 테스트
+│   ├── test_tile_movement.py    # 발판 이동 테스트
+│   └── test_battle_result.py    # 전투 결과 확인 테스트
 ├── config/
 │   └── settings.py
 ├── main.py
@@ -260,12 +295,17 @@ NexonGamesProject_V2/
 ## 개발 일정
 
 - **마감일**: 2026년 1월 13일 (월요일)
-- **현재 상태**: Phase 1 진행 중
+- **현재 상태**: Phase 1 완료, 전체 플로우 구현 완료
+- **완료된 작업**:
+  1. ✅ 템플릿 매칭 시스템 구현
+  2. ✅ 전체 시나리오 플로우 구현 (단계 1-6)
+  3. ✅ 조건부 분기 로직 구현 (적/빈 발판, Phase 종료 후 적 접근)
+  4. ✅ 단계별 테스트 스크립트 작성
+  5. ✅ 템플릿 이미지 준비 및 검증
 - **다음 작업**:
-  1. enemy_tile.png, empty_tile.png 조정
-  2. battle_ui.png 검증
-  3. victory.png, battle_log_button.png, damage_report.png 캡처
-  4. 전체 플로우 통합 테스트
+  1. 전체 플로우 end-to-end 통합 테스트 (main.py)
+  2. 최종 검증 및 버그 수정
+  3. 테스트 결과 문서화
 
 ## 기술적 한계 및 대안
 

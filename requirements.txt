@@ -5,8 +5,10 @@ pyautogui==0.9.54
 
 # 이미지 처리
 Pillow==10.2.0
+opencv-python==4.9.0.80
+numpy==1.26.3
 
-# OCR (Phase 2: 코스트 인식용)
+# OCR (텍스트/숫자 인식)
 pytesseract==0.3.10
 
 # 유틸리티
