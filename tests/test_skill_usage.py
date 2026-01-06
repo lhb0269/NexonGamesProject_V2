@@ -110,7 +110,7 @@ def test_single_skill_usage(checker: SkillChecker):
     print()
 
     # 카운트다운
-    for i in range(5, 0, -1):
+    for i in range(1, 0, -1):
         print(f"테스트 시작까지: {i}초...")
         time.sleep(1)
 
@@ -174,7 +174,7 @@ def test_multiple_skill_usage(checker: SkillChecker):
         return False
 
     # 카운트다운
-    for i in range(5, 0, -1):
+    for i in range(1, 0, -1):
         print(f"테스트 시작까지: {i}초...")
         time.sleep(1)
 
@@ -252,7 +252,7 @@ def test_insufficient_cost_scenario(checker: SkillChecker):
         return False
 
     # 카운트다운
-    for i in range(3, 0, -1):
+    for i in range(1, 0, -1):
         print(f"테스트 시작까지: {i}초...")
         time.sleep(1)
 
