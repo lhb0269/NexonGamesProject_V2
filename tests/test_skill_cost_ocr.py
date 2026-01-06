@@ -57,7 +57,7 @@ def test_cost_reading_manual():
     print()
 
     # 카운트다운
-    for i in range(5, 0, -1):
+    for i in range(3, 0, -1):
         print(f"테스트 시작까지: {i}초...")
         time.sleep(1)
 
@@ -73,7 +73,7 @@ def test_cost_reading_manual():
             return False
 
         # 현재 화면 캡처 및 코스트 읽기
-        screenshot = controller.capture_screen()
+        screenshot = controller.screenshot()
         cost = checker.read_current_cost(screenshot)
 
         if cost is not None:
@@ -103,7 +103,7 @@ def test_cost_verification_demo():
     print()
 
     # 카운트다운
-    for i in range(5, 0, -1):
+    for i in range(2, 0, -1):
         print(f"테스트 시작까지: {i}초...")
         time.sleep(1)
 

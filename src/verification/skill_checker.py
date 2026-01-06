@@ -253,7 +253,7 @@ class SkillChecker:
         try:
             # 화면 캡처
             if screenshot is None:
-                screenshot = self.controller.capture_screen()
+                screenshot = self.controller.screenshot()
 
             # 코스트 영역 추출 및 OCR
             cost = self.ocr_reader.read_cost_value(
@@ -315,7 +315,7 @@ class SkillChecker:
         try:
             # 사용 전 코스트 읽기
             if before_screenshot is None:
-                before_screenshot = self.controller.capture_screen()
+                before_screenshot = self.controller.screenshot()
 
             cost_before = self.read_current_cost(before_screenshot)
             result["cost_before"] = cost_before
@@ -406,7 +406,7 @@ class SkillChecker:
         before_screen = None
 
         if self.enable_ocr:
-            before_screen = self.controller.capture_screen()
+            before_screen = self.controller.screenshot()
             current_cost = self.read_current_cost(before_screen)
 
             if current_cost is not None and current_cost < skill_cost:
@@ -434,7 +434,7 @@ class SkillChecker:
         # 3. 스킬 사용 후 코스트 검증
         if self.enable_ocr:
             time.sleep(0.5)  # 코스트 UI 업데이트 대기
-            after_screen = self.controller.capture_screen()
+            after_screen = self.controller.screenshot()
 
             cost_check = self.verify_cost_consumption(
                 skill_cost=skill_cost,
