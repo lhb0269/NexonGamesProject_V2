@@ -26,8 +26,13 @@
 
 ### 필수 요구사항
 ```bash
-pip install pyautogui pillow opencv-python
+pip install pyautogui pillow opencv-python pytesseract numpy
 ```
+
+**추가 요구사항:**
+- Tesseract OCR 설치 (Windows: https://github.com/UB-Mannheim/tesseract/wiki)
+  - 기본 설치 경로: `C:\Program Files\Tesseract-OCR\tesseract.exe`
+  - 한국어 언어팩 포함 (kor, eng)
 
 ### 프로젝트 구조
 ```
@@ -38,10 +43,12 @@ NexonGamesProject_V2/
 │   │   └── stage_runner.py       # 스테이지 전체 흐름 실행
 │   ├── recognition/    # 이미지 인식
 │   │   └── template_matcher.py   # pyautogui 템플릿 매칭 래퍼
+│   ├── ocr/            # OCR 텍스트 인식
+│   │   └── ocr_reader.py         # Tesseract OCR 래퍼 (통합 클래스)
 │   ├── verification/   # 검증 로직
 │   │   ├── movement_checker.py   # 이동 검증
 │   │   ├── battle_checker.py     # 전투 검증
-│   │   ├── skill_checker.py      # 스킬 검증
+│   │   ├── skill_checker.py      # 스킬 검증 (OCR 통합)
 │   │   └── reward_checker.py     # 보상 검증
 │   └── logger/         # 결과 기록
 │       └── test_logger.py        # JSON 기반 로깅
@@ -54,9 +61,17 @@ NexonGamesProject_V2/
 ├── tests/              # 테스트 스크립트
 │   ├── test_modules.py          # 기본 모듈 테스트
 │   ├── test_partial_stage.py    # 부분 단계별 테스트
-│   └── test_tile_movement.py    # 발판 이동 테스트
+│   ├── test_tile_movement.py    # 발판 이동 테스트
+│   ├── test_skill_cost_ocr.py   # 코스트 OCR 테스트
+│   ├── test_skill_usage.py      # 스킬 사용 시스템 테스트
+│   └── test_ocr_simple.py       # OCR 모듈 기본 테스트
+├── tools/              # 보조 도구
+│   ├── capture_battle_screen.py # 전투 화면 캡처 도구
+│   └── find_cost_region.py      # 코스트 영역 좌표 측정 도구
 ├── config/
-│   └── settings.py     # 전역 설정
+│   ├── settings.py              # 전역 설정
+│   ├── ocr_regions.py           # OCR 영역 좌표 정의
+│   └── skill_settings.py        # 스킬 사용 설정 (좌표, 타이밍)
 ├── main.py
 ├── requirements.txt
 └── README.md
@@ -88,10 +103,19 @@ NexonGamesProject_V2/
 #### 3. Verification Layer (검증 계층)
 - **MovementChecker**: 발판 이동 검증
 - **BattleChecker**: 전투 진입/종료 검증
-- **SkillChecker**: 스킬 사용 검증 (사용 안 함)
+- **SkillChecker**: 스킬 사용 검증 (OCR 기반 코스트 검증 포함)
 - **RewardChecker**: 보상 획득 검증 (현재는 damage_report 검증으로 변경)
 
-#### 4. Logging Layer (로깅 계층)
+#### 4. OCR Layer (OCR 계층)
+**OCRReader** ([src/ocr/ocr_reader.py](src/ocr/ocr_reader.py))
+- Tesseract OCR 엔진 통합
+- 다중 PSM 모드 지원 (7, 8, 6, 13)
+- 이미지 전처리 (그레이스케일, 임계값, 노이즈 제거, 스케일링)
+- 숫자/텍스트 읽기 전용 메서드
+- 코스트 값 읽기 (`read_cost_value`)
+- 배치 처리 지원
+
+#### 5. Logging Layer (로깅 계층)
 **TestLogger** ([src/logger/test_logger.py](src/logger/test_logger.py))
 - 타임스탬프 기반 로그 디렉토리 생성
 - 검증 항목별 성공/실패 기록 (JSON)
@@ -158,13 +182,19 @@ NexonGamesProject_V2/
    - GameController (마우스/키보드 제어)
    - TestLogger (JSON 로깅 + 스크린샷)
 
-2. **검증 모듈**
+2. **OCR 시스템 (Phase 2)**
+   - OCRReader (Tesseract 통합, 다중 PSM 모드)
+   - 이미지 전처리 파이프라인
+   - 코스트 값 읽기 (현재 코스트, 스킬 코스트)
+   - 좌표 캘리브레이션 도구 (capture, find_cost_region)
+
+3. **검증 모듈**
    - MovementChecker (발판 이동 검증)
    - BattleChecker (전투 진입/종료 검증)
-   - SkillChecker (구현됨, 현재 시나리오에서 미사용)
+   - SkillChecker (스킬 사용 + OCR 코스트 검증)
    - RewardChecker (보상 획득 검증)
 
-3. **StageRunner 전체 플로우**
+4. **StageRunner 전체 플로우**
    - 단계 1-2.5: 시작 → 편성 → 출격 → 맵 → 임무 개시
    - 단계 3: 발판 클릭 (적/빈 발판 자동 판단)
    - 단계 3.5: Phase 종료 + 적 접근 감지
@@ -172,11 +202,14 @@ NexonGamesProject_V2/
    - 단계 5: 전투 종료 확인 (Victory)
    - 단계 6: 전투 결과 확인 (통계 → 데미지 기록 → 랭크 획득 → 스테이지 복귀)
 
-4. **테스트 스크립트**
+5. **테스트 스크립트**
    - test_modules.py: 기본 모듈 동작 테스트
    - test_partial_stage.py: 단계 1-2.5 테스트 (5/5 통과)
    - test_tile_movement.py: 발판 이동 단독 테스트 (신뢰도 0.5 조정)
    - test_battle_result.py: 전투 결과 확인 플로우 테스트 (단계 6)
+   - test_ocr_simple.py: OCR 모듈 기본 테스트
+   - test_skill_cost_ocr.py: 코스트 OCR 읽기 테스트
+   - test_skill_usage.py: 스킬 사용 시스템 통합 테스트
 
 ### 🔄 진행 중
 - 템플릿 이미지 준비 및 검증
@@ -195,12 +228,166 @@ NexonGamesProject_V2/
 5. ✅ 전투 종료 감지 (Victory)
 6. ✅ 전투 결과 확인 (통계 → 데미지 기록 → 랭크 획득 → 스테이지 복귀)
 
-### Phase 2 - 추가 기능 (선택)
-- ❌ 스킬 사용 (현재 시나리오에서 제외)
-- ❌ 코스트 소모 확인 (현재 시나리오에서 제외)
+### Phase 2 - 스킬 사용 시스템 (완료)
+- ✅ OCR 기반 코스트 읽기
+  - 현재 코스트 인식 (우측 상단 UI)
+  - 스킬 버튼 코스트 인식 (버튼 하단)
+- ✅ 스킬 사용 플로우
+  - 스킬 버튼 → 화면 중앙 드래그
+  - 코스트 소모 검증
+  - 코스트 부족 시 스킬 미발동 감지
+- ✅ 좌표 캘리브레이션 도구
+  - 화면 캡처 도구 (capture_battle_screen.py)
+  - 영역 선택 도구 (find_cost_region.py)
 
 ### Phase 3 - 기술적 한계 (문서화)
 - ⚠️ 실시간 데미지 캡처 (기술적 한계)
+- ⚠️ 스킬 쿨다운/대기시간 추적 (현재 미구현)
+
+## 스킬 사용 시스템 (Phase 2)
+
+### 개요
+전투 중 스킬 사용을 자동화하고, OCR로 코스트를 검증하는 시스템입니다.
+
+### 시스템 구성
+
+#### 1. 좌표 설정 ([config/skill_settings.py](config/skill_settings.py))
+```python
+# 2560x1440 해상도 기준
+
+# 스킬 버튼 클릭 위치 (3개 슬롯)
+SKILL_BUTTON_SLOT_1 = (1797, 1242)
+SKILL_BUTTON_SLOT_2 = (2000, 1240)
+SKILL_BUTTON_SLOT_3 = (2200, 1240)
+
+# 스킬 코스트 OCR 영역 (버튼 하단)
+SKILL_COST_SLOT_1 = (1768, 1304, 1815, 1350)
+SKILL_COST_SLOT_2 = (1973, 1304, 2017, 1350)
+SKILL_COST_SLOT_3 = (2174, 1304, 2225, 1350)
+
+# 화면 중앙 (스킬 타겟 위치)
+SCREEN_CENTER_X = 1280
+SCREEN_CENTER_Y = 720
+
+# 타이밍
+TARGET_CLICK_TO_COST_UPDATE_WAIT = 1.0  # 드래그 후 대기
+```
+
+#### 2. OCR 영역 설정 ([config/ocr_regions.py](config/ocr_regions.py))
+```python
+# 현재 코스트 표시 영역 (우측 상단)
+BATTLE_COST_VALUE_REGION = (1550, 1300, 1645, 1400)
+```
+
+#### 3. 스킬 사용 플로우 ([src/verification/skill_checker.py](src/verification/skill_checker.py))
+```python
+def use_skill_and_verify(slot_index: int, student_name: str) -> Dict:
+    """
+    1. 스킬 버튼 코스트 읽기 (OCR)
+    2. 현재 코스트 읽기 (사용 전)
+    3. 코스트 충분 여부 체크 (부족하면 중단)
+    4. 스킬 버튼 → 화면 중앙 드래그 (0.5초)
+    5. 1.0초 대기 (코스트 UI 업데이트)
+    6. 현재 코스트 읽기 (사용 후)
+    7. 코스트 차감 검증: (전 - 후) == 스킬 코스트
+    """
+```
+
+### 스킬 사용 방식
+- **기존 방식 (X)**: 클릭 → 대기 → 클릭
+- **현재 방식 (O)**: 스킬 버튼에서 화면 중앙으로 드래그
+  - `controller.drag(start, end, duration=0.5)`
+  - 게임의 실제 스킬 사용 방식과 동일
+
+### OCR 인식 최적화
+- **다중 PSM 모드**: 7, 8, 6, 13 순차 시도
+- **전처리 파이프라인**:
+  1. 그레이스케일 변환
+  2. 임계값 처리 (THRESH_BINARY)
+  3. 노이즈 제거 (medianBlur)
+  4. 2배 스케일 업 (인식률 향상)
+- **숫자 전용 화이트리스트**: `0123456789`
+
+### 좌표 캘리브레이션 도구
+
+#### 화면 캡처 도구
+```bash
+python tools/capture_battle_screen.py
+```
+- 5초 카운트다운 후 전투 화면 스크린샷 저장
+- 저장 위치: `logs/ocr_calibration/battle_screen_YYYYMMDD_HHMMSS.png`
+
+#### 영역 선택 도구
+```bash
+python tools/find_cost_region.py
+```
+- GUI로 코스트 영역 드래그 선택
+- 자동으로 좌표 계산 및 출력
+- 미리보기 이미지 저장: `cost_region_preview.png`
+
+### 테스트 스크립트
+
+#### 1. OCR 기본 테스트
+```bash
+python tests/test_ocr_simple.py
+```
+- OCR 모듈 import 확인
+- 의존성 패키지 확인
+- 클래스 구조 검증
+
+#### 2. 코스트 OCR 테스트
+```bash
+python tests/test_skill_cost_ocr.py
+```
+- OCR 초기화
+- 현재 코스트 읽기
+- 코스트 검증 로직 시뮬레이션
+
+#### 3. 스킬 사용 시스템 테스트
+```bash
+python tests/test_skill_usage.py
+```
+- 스킬 버튼 코스트 읽기 (3개 슬롯)
+- 단일 스킬 사용 및 검증
+- 다중 스킬 사용 (3개 연속)
+- 코스트 부족 시나리오
+
+### 제약사항 및 고려사항
+
+#### 해상도 의존성
+- **기준 해상도**: 2560x1440
+- 다른 해상도 사용 시 좌표 재측정 필요
+- 캘리브레이션 도구로 좌표 재설정 가능
+
+#### OCR 정확도
+- **환경**: Tesseract 필수 설치
+- **언어팩**: eng (영어) 필수
+- **인식률**: 전처리 및 다중 PSM 모드로 최적화
+
+#### 게임 상태
+- 전투 화면에서만 동작
+- 스킬 애니메이션 중 UI 가려짐 가능
+- 네트워크 지연 시 대기 시간 부족 가능
+
+#### 미구현 기능
+- 스킬 쿨다운 추적 (현재 버튼 상태 확인 안 함)
+- 스킬 대기 시간 (즉시 사용 가능 여부만 확인)
+- 스킬 버튼 페이징 (6개 학생 중 3개씩 표시됨)
+
+### 외부 참조
+
+#### Tesseract OCR
+- **공식 위키**: https://github.com/UB-Mannheim/tesseract/wiki
+- **Windows 설치**: UB Mannheim 빌드 사용
+- **기본 경로**: `C:\Program Files\Tesseract-OCR\tesseract.exe`
+- **자동 인식**: `ocr_reader.py`에서 경로 자동 탐지
+
+#### PSM (Page Segmentation Mode)
+- **PSM 7**: 단일 라인 텍스트
+- **PSM 8**: 단일 단어
+- **PSM 6**: 단일 블록 텍스트
+- **PSM 13**: Raw line (전처리 없음)
+- 참고: https://tesseract-ocr.github.io/tessdoc/ImproveQuality.html
 
 ## 중요 개발 노트
 
@@ -261,13 +448,58 @@ NexonGamesProject_V2/
 
 ## 알려진 제약사항
 
+### 일반 제약사항
 1. **화면 인식 기반**: 게임 화면이 가려지거나 최소화되면 작동 불가
-2. **해상도 의존**: 템플릿 이미지는 특정 해상도 기준 (재캡처 필요 시)
+2. **해상도 의존**: 템플릿 이미지 및 OCR 좌표는 2560x1440 기준 (재설정 필요 시)
 3. **동적 화면**: 전투 중 화면 움직임으로 인한 템플릿 매칭 실패 가능
 4. **이펙트 간섭**: 스킬 이펙트가 UI를 가려 인식 방해
 5. **타이밍 변동**: 네트워크 지연 시 대기 시간 부족할 수 있음
 
+### OCR 관련 제약사항
+6. **Tesseract 의존**: 외부 프로그램 설치 필수
+7. **언어팩**: 영어(eng) 언어팩 필수 설치
+8. **OCR 정확도**: 스킬 애니메이션/이펙트 중 인식률 저하 가능
+9. **좌표 고정**: 해상도 변경 시 OCR 영역 재설정 필요
+10. **UI 변동**: 게임 업데이트로 UI 위치 변경 시 좌표 재측정 필요
+
+### 스킬 시스템 제약사항
+11. **스킬 쿨다운 미추적**: 버튼 상태 확인 없음 (즉시 사용 가능 가정)
+12. **스킬 대기시간 미구현**: 스킬 사용 후 대기 시간 고려 안 함
+13. **버튼 페이징 미지원**: 6개 학생 중 3개씩 표시되는 페이징 로직 없음
+
 ## 일정
 - **마감일**: 2026년 1월 13일 (월요일)
-- **현재 상태**: Phase 1 완료, 전체 플로우 구현 완료
+- **현재 상태**: Phase 1 완료, Phase 2 완료 (스킬 사용 시스템)
 - **다음 단계**: 전체 플로우 통합 테스트 및 최종 검증
+
+## 개발 히스토리
+
+### Phase 2: 스킬 사용 시스템 (2026-01-07)
+**브랜치**: `feature/skill-usage-system`
+
+**구현 내용**:
+- Tesseract OCR 통합 (다중 PSM 모드)
+- 스킬 버튼 코스트 읽기 (3개 슬롯)
+- 현재 코스트 읽기 (우측 상단 UI)
+- 스킬 사용 플로우 (드래그 방식)
+- 코스트 소모 검증
+- 좌표 캘리브레이션 도구 2종
+
+**주요 변경사항**:
+- 클릭 → 클릭 방식에서 드래그 방식으로 변경
+- 버튼 클릭 후 대기 시간: 0.5초 → 1.0초 → 2.0초 → 드래그로 대체
+- 드래그 duration: 0.5초
+- 코스트 업데이트 대기: 1.0초
+
+**커밋**:
+1. `b695fef` - feat: 스킬 사용 시스템 구현 (OCR 기반 코스트 검증)
+2. `83d4fe1` - fix: GameController.click()에 wait_after 파라미터 제거
+3. `a66e044` - config: 스킬 버튼 클릭 후 대기 시간 증가 (0.5초 → 1.0초)
+4. `8966c2c` - config: 스킬 버튼 클릭 후 대기 시간 증가 (1초 → 2초)
+5. `1c4f969` - refactor: 스킬 사용 방식을 클릭→클릭에서 드래그로 변경
+
+**테스트 결과**:
+- OCR 초기화: ✓
+- 코스트 읽기: ✓
+- 스킬 버튼 코스트 읽기: ✓
+- 스킬 사용 플로우: 테스트 진행 중
