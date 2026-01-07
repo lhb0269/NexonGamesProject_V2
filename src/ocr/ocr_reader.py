@@ -59,8 +59,8 @@ class OCRReader:
         image: Image.Image,
         grayscale: bool = True,
         threshold: bool = True,
-        denoise: bool = False,
-        scale_factor: float = 2.0
+        denoise: bool = True,
+        scale_factor: float = 3.0
     ) -> Image.Image:
         """
         OCR 정확도 향상을 위한 이미지 전처리
@@ -94,7 +94,7 @@ class OCRReader:
 
         # 3. 노이즈 제거
         if denoise:
-            img_array = cv2.fastNlMeansDenoising(img_array, h=10)
+            img_array = cv2.medianBlur(img_array, 3)
 
         # 4. 이진화 (흑백 대비 강화)
         if threshold:
@@ -213,7 +213,7 @@ class OCRReader:
         image: Image.Image,
         min_value: Optional[int] = None,
         max_value: Optional[int] = None,
-        retries: int = 3,
+        retries: int = 5,
         preprocess: bool = True
     ) -> Optional[int]:
         """
@@ -230,7 +230,10 @@ class OCRReader:
             추출된 정수 또는 None (실패 시)
         """
         # 여러 PSM 모드 시도 (숫자 인식에 효과적인 순서)
-        psm_modes = [7, 8, 6, 13]  # 단일 라인, 단일 단어, 블록, 원시 라인
+        psm_modes = [7, 8, 6, 13, 3]  # 단일 라인, 단일 단어, 블록, 원시 라인, 자동
+
+        # 결과 수집 (빈도 기반 필터링)
+        candidates = []
 
         for attempt in range(retries):
             if preprocess:
@@ -258,16 +261,23 @@ class OCRReader:
                     if max_value is not None and value > max_value:
                         continue
 
-                    return value
+                    candidates.append(value)
 
                 except (ValueError, IndexError):
                     continue
 
             # 재시도 간 대기
             if attempt < retries - 1:
-                time.sleep(0.1)
+                time.sleep(0.05)
 
-        return None
+        # 후보가 없으면 실패
+        if not candidates:
+            return None
+
+        # 가장 많이 나온 값 반환 (빈도 기반)
+        from collections import Counter
+        most_common = Counter(candidates).most_common(1)
+        return most_common[0][0]
 
     def read_cost_value(
         self,
