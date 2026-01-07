@@ -20,67 +20,49 @@ class TestRunnerGUI:
     """테스트 실행 GUI 메인 클래스"""
 
     def __init__(self, root):
-        print("[GUI] __init__ 시작")
         self.root = root
-        print("[GUI] root 설정 완료")
 
         self.root.title("블루 아카이브 자동화 테스트 실행기")
-        print("[GUI] 타이틀 설정 완료")
 
         self.root.geometry("1200x700")
-        print("[GUI] 지오메트리 설정 완료")
 
         # 테스트 실행 상태
         self.is_running = False
         self.current_test = None
-        print("[GUI] 상태 변수 초기화 완료")
 
         # 현재 해상도 설정
         self.current_resolution = CURRENT_RESOLUTION
-        print(f"[GUI] 현재 해상도: {self.current_resolution}")
 
         # GUI 컴포넌트 초기화
-        print("[GUI] setup_ui() 호출")
         self.setup_ui()
-        print("[GUI] setup_ui() 완료")
 
     def setup_ui(self):
         """UI 레이아웃 구성"""
-        print("[GUI] setup_ui 시작")
 
         # 메인 프레임
-        print("[GUI] 메인 프레임 생성 중...")
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        print("[GUI] 메인 프레임 생성 완료")
 
         # 그리드 가중치 설정
-        print("[GUI] 그리드 가중치 설정 중...")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
         main_frame.rowconfigure(1, weight=1)
-        print("[GUI] 그리드 가중치 설정 완료")
 
         # 상단 헤더 프레임
-        print("[GUI] 헤더 프레임 생성 중...")
         header_frame = ttk.Frame(main_frame)
         header_frame.grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky=(tk.W, tk.E))
         header_frame.columnconfigure(0, weight=1)
-        print("[GUI] 헤더 프레임 생성 완료")
 
         # 상단 타이틀
-        print("[GUI] 타이틀 레이블 생성 중...")
         title_label = ttk.Label(
             header_frame,
             text="블루 아카이브 Normal 1-4 자동화 테스트",
             font=("TkDefaultFont", 16, "bold")
         )
         title_label.grid(row=0, column=0, sticky=tk.W)
-        print("[GUI] 타이틀 레이블 생성 완료")
 
         # 디스플레이 설정 버튼
-        print("[GUI] 디스플레이 버튼 생성 중...")
         try:
             display_btn = tk.Button(
                 header_frame,
@@ -96,29 +78,21 @@ class TestRunnerGUI:
             )
             display_btn.grid(row=0, column=1, sticky=tk.E)
             self.display_btn = display_btn
-            print("[GUI] 디스플레이 버튼 생성 완료")
         except Exception as e:
-            print(f"[GUI] 디스플레이 버튼 생성 실패: {e}")
             raise
 
         # 왼쪽 패널: 테스트 항목 버튼들
-        print("[GUI] 왼쪽 패널 생성 중...")
         left_frame = ttk.LabelFrame(main_frame, text="테스트 항목", padding="10")
         left_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
-        print("[GUI] 왼쪽 패널 생성 완료")
 
         # 오른쪽 패널: 로그 출력
-        print("[GUI] 오른쪽 패널 생성 중...")
         right_frame = ttk.LabelFrame(main_frame, text="실시간 로그", padding="10")
         right_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
         right_frame.columnconfigure(0, weight=1)
         right_frame.rowconfigure(0, weight=1)
-        print("[GUI] 오른쪽 패널 생성 완료")
 
         # 테스트 항목 버튼들
-        print("[GUI] create_test_buttons() 호출")
         self.create_test_buttons(left_frame)
-        print("[GUI] create_test_buttons() 완료")
 
         # 로그 출력 창
         self.create_log_panel(right_frame)
@@ -588,7 +562,6 @@ class TestRunnerGUI:
 def main():
     """메인 함수"""
     try:
-        print("GUI 초기화 시작...")
         root = tk.Tk()
         print("Tk 생성 완료")
 
@@ -605,7 +578,6 @@ def main():
         app.log("  3. 테스트 시작 전 해당 화면으로 이동해주세요.", "warning")
         app.log("")
 
-        print("GUI 메인루프 시작...")
         root.mainloop()
     except Exception as e:
         print(f"GUI 실행 오류: {e}")
