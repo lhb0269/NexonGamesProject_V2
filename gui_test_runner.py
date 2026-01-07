@@ -300,11 +300,22 @@ class TestRunnerGUI:
     def _execute_test(self, test_info):
         """실제 테스트 실행 (백그라운드 스레드)"""
 
-        script_path = Path(test_info['script'])
+        # PyInstaller 환경 고려한 경로 설정
+        import sys
+        if getattr(sys, 'frozen', False):
+            # PyInstaller로 패키징된 경우 - 임시 디렉토리 기준
+            base_path = Path(sys._MEIPASS)
+        else:
+            # 일반 Python 실행 - 현재 디렉토리 기준
+            base_path = Path.cwd()
+
+        script_path = base_path / test_info['script']
 
         # 스크립트 존재 확인
         if not script_path.exists():
             self.log(f"✗ 스크립트 파일을 찾을 수 없습니다: {script_path}", "error")
+            self.log(f"  Base Path: {base_path}", "error")
+            self.log(f"  Script: {test_info['script']}", "error")
             self._finish_test(False)
             return
 
