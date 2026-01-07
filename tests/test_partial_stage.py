@@ -66,7 +66,7 @@ def test_start_to_formation():
 
     # 카운트다운
     import time
-    for i in range(10, 0, -1):
+    for i in range(5, 0, -1):
         print(f"{i}초 남음...")
         time.sleep(1)
 
@@ -95,7 +95,7 @@ def test_start_to_formation():
     print("\n[2단계] 시작 발판 클릭...")
     print("3초 후 클릭합니다...")
 
-    for i in range(3, 0, -1):
+    for i in range(2, 0, -1):
         print(f"{i}...")
         time.sleep(1)
 
@@ -215,9 +215,9 @@ def test_deploy_to_map(logger):
     logger.save_screenshot(screenshot, "deploy_button_found")
 
     print("\n[2단계] 출격 버튼 클릭...")
-    print("3초 후 클릭합니다...")
+    print("2초 후 클릭합니다...")
 
-    for i in range(3, 0, -1):
+    for i in range(2, 0, -1):
         print(f"{i}...")
         time.sleep(1)
 
@@ -285,9 +285,9 @@ def test_deploy_to_map(logger):
     logger.save_screenshot(screenshot, "mission_start_button_found")
 
     print("\n[5단계] 임무 개시 버튼 클릭...")
-    print("3초 후 클릭합니다...")
+    print("2초 후 클릭합니다...")
 
-    for i in range(3, 0, -1):
+    for i in range(2, 0, -1):
         print(f"{i}...")
         time.sleep(1)
 
@@ -332,7 +332,7 @@ def main():
         print("\n[1단계 실패] 시작 발판 → 편성 화면")
         print("실패한 단계를 먼저 해결해주세요.")
         print("logs/ 폴더의 스크린샷을 확인하여 문제를 파악할 수 있습니다.")
-        return
+        raise RuntimeError("1단계 테스트 실패")
 
     print("\n" + "="*60)
     print("1단계 성공! 다음 단계로 진행합니다...")
@@ -349,7 +349,7 @@ def main():
         print("실패한 단계를 먼저 해결해주세요.")
         print("logs/ 폴더의 스크린샷을 확인하여 문제를 파악할 수 있습니다.")
         logger.finalize()
-        return
+        raise RuntimeError("2단계 테스트 실패")
 
     # 전체 성공
     print("\n" + "="*60)
