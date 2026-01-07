@@ -11,9 +11,10 @@ from pathlib import Path
 
 # UTF-8 인코딩 강제 설정 (cp949 오류 방지)
 # GUI 환경에서는 이미 stdout이 리다이렉션되어 있으므로 스킵
-if hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+if not hasattr(sys.stdout, '_buffer'):  # GuiOutputStream은 _buffer 속성이 있음
+    if hasattr(sys.stdout, 'buffer'):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # 프로젝트 루트를 Python path에 추가
 project_root = Path(__file__).parent.parent
