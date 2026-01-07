@@ -310,12 +310,16 @@ class TestRunnerGUI:
                 def __init__(self, log_func, root):
                     self.log_func = log_func
                     self.root = root
-                    self.buffer = ""
+                    self._buffer = ""
+                    # TextIOWrapper 호환성을 위한 더미 속성
+                    self.buffer = self  # 자기 자신을 buffer로 설정
+                    self.encoding = 'utf-8'
+                    self.errors = 'replace'
 
                 def write(self, text):
-                    self.buffer += text
-                    if '\n' in self.buffer:
-                        lines = self.buffer.split('\n')
+                    self._buffer += text
+                    if '\n' in self._buffer:
+                        lines = self._buffer.split('\n')
                         for line in lines[:-1]:
                             if line.strip():
                                 # 로그 레벨에 따라 색상 적용
@@ -329,10 +333,16 @@ class TestRunnerGUI:
                                     self.root.after(0, self.log_func, line, "header")
                                 else:
                                     self.root.after(0, self.log_func, line)
-                        self.buffer = lines[-1]
+                        self._buffer = lines[-1]
 
                 def flush(self):
                     pass
+
+                def readable(self):
+                    return False
+
+                def writable(self):
+                    return True
 
             gui_output = GuiOutputStream(self.log, self.root)
             sys.stdout = gui_output
