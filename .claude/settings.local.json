@@ -25,7 +25,8 @@
       "Bash(then mv assets/templates/icons assets/templates/1920x1080/)",
       "Bash(if [ -d \"assets/templates/ui\" ])",
       "Bash(then mv assets/templates/ui assets/templates/1920x1080/)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
