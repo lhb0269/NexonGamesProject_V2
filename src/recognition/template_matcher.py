@@ -136,12 +136,25 @@ class TemplateMatcher:
                     return None
 
                 try:
-                    location = pyautogui.locateOnScreen(
-                        scaled_template_path,
-                        confidence=self.confidence,
-                        region=region,
-                        grayscale=grayscale
-                    )
+                    # OpenCV가 설치되어 있으면 confidence 사용
+                    try:
+                        location = pyautogui.locateOnScreen(
+                            scaled_template_path,
+                            confidence=self.confidence,
+                            region=region,
+                            grayscale=grayscale
+                        )
+                    except TypeError as te:
+                        # OpenCV 없을 때 confidence 없이 재시도
+                        if "confidence" in str(te):
+                            logger.warning("OpenCV가 설치되지 않아 confidence 없이 템플릿 매칭합니다. 'pip install opencv-python' 실행 권장")
+                            location = pyautogui.locateOnScreen(
+                                scaled_template_path,
+                                region=region,
+                                grayscale=grayscale
+                            )
+                        else:
+                            raise
 
                     if location:
                         logger.info(f"템플릿 발견: {template_path.name} at {location}")
