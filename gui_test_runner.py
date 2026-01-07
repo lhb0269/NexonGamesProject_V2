@@ -20,75 +20,105 @@ class TestRunnerGUI:
     """테스트 실행 GUI 메인 클래스"""
 
     def __init__(self, root):
+        print("[GUI] __init__ 시작")
         self.root = root
+        print("[GUI] root 설정 완료")
+
         self.root.title("블루 아카이브 자동화 테스트 실행기")
+        print("[GUI] 타이틀 설정 완료")
+
         self.root.geometry("1200x700")
+        print("[GUI] 지오메트리 설정 완료")
 
         # 테스트 실행 상태
         self.is_running = False
         self.current_test = None
+        print("[GUI] 상태 변수 초기화 완료")
 
         # 현재 해상도 설정
         self.current_resolution = CURRENT_RESOLUTION
+        print(f"[GUI] 현재 해상도: {self.current_resolution}")
 
         # GUI 컴포넌트 초기화
+        print("[GUI] setup_ui() 호출")
         self.setup_ui()
+        print("[GUI] setup_ui() 완료")
 
     def setup_ui(self):
         """UI 레이아웃 구성"""
+        print("[GUI] setup_ui 시작")
 
         # 메인 프레임
+        print("[GUI] 메인 프레임 생성 중...")
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        print("[GUI] 메인 프레임 생성 완료")
 
         # 그리드 가중치 설정
+        print("[GUI] 그리드 가중치 설정 중...")
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
         main_frame.rowconfigure(1, weight=1)
+        print("[GUI] 그리드 가중치 설정 완료")
 
         # 상단 헤더 프레임
+        print("[GUI] 헤더 프레임 생성 중...")
         header_frame = ttk.Frame(main_frame)
         header_frame.grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky=(tk.W, tk.E))
         header_frame.columnconfigure(0, weight=1)
+        print("[GUI] 헤더 프레임 생성 완료")
 
         # 상단 타이틀
+        print("[GUI] 타이틀 레이블 생성 중...")
         title_label = ttk.Label(
             header_frame,
             text="블루 아카이브 Normal 1-4 자동화 테스트",
-            font=("맑은 고딕", 16, "bold")
+            font=("TkDefaultFont", 16, "bold")
         )
         title_label.grid(row=0, column=0, sticky=tk.W)
+        print("[GUI] 타이틀 레이블 생성 완료")
 
         # 디스플레이 설정 버튼
-        display_btn = tk.Button(
-            header_frame,
-            text=f"🖥 디스플레이: {self.current_resolution}",
-            command=self.open_display_settings,
-            bg="#607D8B",
-            fg="white",
-            font=("맑은 고딕", 9, "bold"),
-            cursor="hand2",
-            relief=tk.RAISED,
-            borderwidth=2,
-            padx=10,
-            pady=5
-        )
-        display_btn.grid(row=0, column=1, sticky=tk.E)
-        self.display_btn = display_btn
+        print("[GUI] 디스플레이 버튼 생성 중...")
+        try:
+            display_btn = tk.Button(
+                header_frame,
+                text=f"디스플레이: {self.current_resolution}",  # 이모지 제거
+                command=self.open_display_settings,
+                bg="#607D8B",
+                fg="white",
+                cursor="hand2",
+                relief=tk.RAISED,
+                borderwidth=2,
+                padx=10,
+                pady=5
+            )
+            display_btn.grid(row=0, column=1, sticky=tk.E)
+            self.display_btn = display_btn
+            print("[GUI] 디스플레이 버튼 생성 완료")
+        except Exception as e:
+            print(f"[GUI] 디스플레이 버튼 생성 실패: {e}")
+            raise
 
         # 왼쪽 패널: 테스트 항목 버튼들
+        print("[GUI] 왼쪽 패널 생성 중...")
         left_frame = ttk.LabelFrame(main_frame, text="테스트 항목", padding="10")
         left_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
+        print("[GUI] 왼쪽 패널 생성 완료")
 
         # 오른쪽 패널: 로그 출력
+        print("[GUI] 오른쪽 패널 생성 중...")
         right_frame = ttk.LabelFrame(main_frame, text="실시간 로그", padding="10")
         right_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
         right_frame.columnconfigure(0, weight=1)
         right_frame.rowconfigure(0, weight=1)
+        print("[GUI] 오른쪽 패널 생성 완료")
 
         # 테스트 항목 버튼들
+        print("[GUI] create_test_buttons() 호출")
         self.create_test_buttons(left_frame)
+        print("[GUI] create_test_buttons() 완료")
 
         # 로그 출력 창
         self.create_log_panel(right_frame)
@@ -146,7 +176,7 @@ class TestRunnerGUI:
                 command=lambda t=test: self.run_test(t),
                 bg=test["color"],
                 fg="white",
-                font=("맑은 고딕", 10, "bold"),
+                font=("TkDefaultFont", 10, "bold"),
                 height=2,
                 cursor="hand2",
                 relief=tk.RAISED,
@@ -158,7 +188,7 @@ class TestRunnerGUI:
             desc_label = ttk.Label(
                 btn_frame,
                 text=test["description"],
-                font=("맑은 고딕", 8),
+                font=("TkDefaultFont", 8),
                 foreground="gray"
             )
             desc_label.pack(fill=tk.X)
@@ -176,7 +206,7 @@ class TestRunnerGUI:
             command=self.stop_test,
             bg="#607D8B",
             fg="white",
-            font=("맑은 고딕", 10, "bold"),
+            font=("TkDefaultFont", 10, "bold"),
             height=2,
             cursor="hand2",
             state=tk.DISABLED
@@ -224,7 +254,7 @@ class TestRunnerGUI:
         self.status_label = ttk.Label(
             status_frame,
             text="준비",
-            font=("맑은 고딕", 9)
+            font=("TkDefaultFont", 9)
         )
         self.status_label.pack(side=tk.LEFT)
 
@@ -432,7 +462,7 @@ class TestRunnerGUI:
         title = ttk.Label(
             main_frame,
             text="디스플레이 해상도 설정",
-            font=("맑은 고딕", 14, "bold")
+            font=("TkDefaultFont", 14, "bold")
         )
         title.pack(pady=(0, 10))
 
@@ -441,7 +471,7 @@ class TestRunnerGUI:
             main_frame,
             text="게임을 실행하는 디스플레이의 해상도를 선택하세요.\n"
                  "해상도에 맞는 템플릿 이미지가 사용됩니다.",
-            font=("맑은 고딕", 9),
+            font=("TkDefaultFont", 9),
             foreground="gray"
         )
         desc.pack(pady=(0, 20))
@@ -450,7 +480,7 @@ class TestRunnerGUI:
         current_label = ttk.Label(
             main_frame,
             text=f"현재 설정: {self.current_resolution}",
-            font=("맑은 고딕", 10, "bold"),
+            font=("TkDefaultFont", 10, "bold"),
             foreground="#2196F3"
         )
         current_label.pack(pady=(0, 20))
@@ -479,14 +509,14 @@ class TestRunnerGUI:
                 status_label = ttk.Label(
                     radio_frame,
                     text=f"  ✓ 템플릿 준비됨: {res_dir}",
-                    font=("맑은 고딕", 8),
+                    font=("TkDefaultFont", 8),
                     foreground="green"
                 )
             else:
                 status_label = ttk.Label(
                     radio_frame,
                     text=f"  ✗ 템플릿 없음: {res_dir}",
-                    font=("맑은 고딕", 8),
+                    font=("TkDefaultFont", 8),
                     foreground="red"
                 )
             status_label.pack(anchor=tk.W, padx=(30, 0))
@@ -535,7 +565,7 @@ class TestRunnerGUI:
             command=save_and_close,
             bg="#4CAF50",
             fg="white",
-            font=("맑은 고딕", 10, "bold"),
+            font=("TkDefaultFont", 10, "bold"),
             cursor="hand2",
             width=10
         )
@@ -548,7 +578,7 @@ class TestRunnerGUI:
             command=dialog.destroy,
             bg="#757575",
             fg="white",
-            font=("맑은 고딕", 10, "bold"),
+            font=("TkDefaultFont", 10, "bold"),
             cursor="hand2",
             width=10
         )
@@ -557,20 +587,31 @@ class TestRunnerGUI:
 
 def main():
     """메인 함수"""
-    root = tk.Tk()
-    app = TestRunnerGUI(root)
+    try:
+        print("GUI 초기화 시작...")
+        root = tk.Tk()
+        print("Tk 생성 완료")
 
-    # 초기 메시지
-    app.log("블루 아카이브 자동화 테스트 실행기가 시작되었습니다.", "info")
-    app.log("왼쪽에서 실행할 테스트를 선택하세요.", "info")
-    app.log("")
-    app.log("⚠ 주의사항:", "warning")
-    app.log("  1. 게임이 실행되어 있어야 합니다.", "warning")
-    app.log("  2. 게임 화면이 보이는 상태여야 합니다.", "warning")
-    app.log("  3. 테스트 시작 전 해당 화면으로 이동해주세요.", "warning")
-    app.log("")
+        app = TestRunnerGUI(root)
+        print("TestRunnerGUI 생성 완료")
 
-    root.mainloop()
+        # 초기 메시지
+        app.log("블루 아카이브 자동화 테스트 실행기가 시작되었습니다.", "info")
+        app.log("왼쪽에서 실행할 테스트를 선택하세요.", "info")
+        app.log("")
+        app.log("⚠ 주의사항:", "warning")
+        app.log("  1. 게임이 실행되어 있어야 합니다.", "warning")
+        app.log("  2. 게임 화면이 보이는 상태여야 합니다.", "warning")
+        app.log("  3. 테스트 시작 전 해당 화면으로 이동해주세요.", "warning")
+        app.log("")
+
+        print("GUI 메인루프 시작...")
+        root.mainloop()
+    except Exception as e:
+        print(f"GUI 실행 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        input("엔터를 눌러 종료...")
 
 
 if __name__ == "__main__":

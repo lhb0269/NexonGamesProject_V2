@@ -26,7 +26,13 @@
       "Bash(if [ -d \"assets/templates/ui\" ])",
       "Bash(then mv assets/templates/ui assets/templates/1920x1080/)",
       "Bash(taskkill:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(pyinstaller:*)",
+      "Bash(dir:*)",
+      "Bash(start distBlueArchiveAutoTest.exe)",
+      "Bash(start \"\" \"dist\\BlueArchiveAutoTest.exe\")",
+      "Bash(distBlueArchiveAutoTest.exe)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

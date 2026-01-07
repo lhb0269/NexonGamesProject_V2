@@ -1,11 +1,19 @@
 """프로젝트 설정 파일"""
 
 import os
+import sys
 import json
 from pathlib import Path
 
-# 프로젝트 루트 디렉토리
-PROJECT_ROOT = Path(__file__).parent.parent
+# 프로젝트 루트 디렉토리 (PyInstaller 대응)
+if getattr(sys, 'frozen', False):
+    # PyInstaller로 패키징된 경우
+    PROJECT_ROOT = Path(sys._MEIPASS)
+    print(f"[settings.py] PyInstaller 모드: PROJECT_ROOT = {PROJECT_ROOT}")
+else:
+    # 일반 Python 실행
+    PROJECT_ROOT = Path(__file__).parent.parent
+    print(f"[settings.py] 일반 모드: PROJECT_ROOT = {PROJECT_ROOT}")
 
 # 디렉토리 경로
 ASSETS_DIR = PROJECT_ROOT / "assets"
@@ -25,10 +33,19 @@ SUPPORTED_RESOLUTIONS = {
 # 현재 해상도 설정 로드
 def load_display_settings():
     """디스플레이 설정 로드"""
-    if SETTINGS_FILE.exists():
-        with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
-            settings = json.load(f)
-            return settings.get('resolution', '1920x1080')
+    print(f"[settings.py] load_display_settings() 호출")
+    print(f"[settings.py] SETTINGS_FILE = {SETTINGS_FILE}")
+    print(f"[settings.py] SETTINGS_FILE.exists() = {SETTINGS_FILE.exists()}")
+    try:
+        if SETTINGS_FILE.exists():
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                res = settings.get('resolution', '1920x1080')
+                print(f"[settings.py] 로드된 해상도: {res}")
+                return res
+    except Exception as e:
+        print(f"[settings.py] 설정 파일 로드 실패: {e}")
+    print(f"[settings.py] 기본값 반환: 1920x1080")
     return '1920x1080'  # 기본값
 
 def save_display_settings(resolution):
@@ -38,7 +55,9 @@ def save_display_settings(resolution):
         json.dump({'resolution': resolution}, f, indent=2, ensure_ascii=False)
 
 # 현재 설정된 해상도
+print("[settings.py] CURRENT_RESOLUTION 초기화 시작")
 CURRENT_RESOLUTION = load_display_settings()
+print(f"[settings.py] CURRENT_RESOLUTION = {CURRENT_RESOLUTION}")
 
 # 해상도별 템플릿 디렉토리
 def get_resolution_dir(resolution=None):
