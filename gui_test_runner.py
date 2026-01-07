@@ -344,6 +344,22 @@ class TestRunnerGUI:
                 def writable(self):
                     return True
 
+                def seekable(self):
+                    return False
+
+                def isatty(self):
+                    return False
+
+                def fileno(self):
+                    raise OSError("GuiOutputStream does not have a file descriptor")
+
+                def close(self):
+                    pass
+
+                @property
+                def closed(self):
+                    return False
+
             gui_output = GuiOutputStream(self.log, self.root)
             sys.stdout = gui_output
             sys.stderr = gui_output
