@@ -108,31 +108,31 @@ class TestRunnerGUI:
             {
                 "name": "기본 모듈 테스트",
                 "description": "TemplateMatcher, GameController 등 기본 모듈 동작 확인",
-                "script": "tests/test_modules.py",
+                "module": "tests.test_modules",
                 "color": "#4CAF50"
             },
             {
                 "name": "단계 1-2.5: 스테이지 진입",
                 "description": "시작 발판 → 편성 → 출격 → 맵 → 임무 개시",
-                "script": "tests/test_partial_stage.py",
+                "module": "tests.test_partial_stage",
                 "color": "#2196F3"
             },
             {
                 "name": "단계 3: 발판 이동",
                 "description": "적 발판/빈 발판 클릭 및 이동 테스트",
-                "script": "tests/test_tile_movement.py",
+                "module": "tests.test_tile_movement",
                 "color": "#FF9800"
             },
             {
                 "name": "단계 6: 전투 결과 확인",
                 "description": "Victory → 통계 → 데미지 기록 → 랭크 획득",
-                "script": "tests/test_battle_result.py",
+                "module": "tests.test_battle_result",
                 "color": "#9C27B0"
             },
             {
                 "name": "전체 플로우 실행",
                 "description": "Normal 1-4 전체 자동 플레이 (단계 1-6)",
-                "script": "main.py",
+                "module": "tests.test_full_stage",
                 "color": "#F44336"
             }
         ]
@@ -285,7 +285,7 @@ class TestRunnerGUI:
         self.log(f"테스트 시작: {test_info['name']}", "header")
         self.log("="*60, "header")
         self.log(f"설명: {test_info['description']}", "info")
-        self.log(f"스크립트: {test_info['script']}", "info")
+        self.log(f"모듈: {test_info['module']}", "info")
         self.log("")
 
         # 상태 업데이트
@@ -300,92 +300,90 @@ class TestRunnerGUI:
     def _execute_test(self, test_info):
         """실제 테스트 실행 (백그라운드 스레드)"""
 
-        # PyInstaller 환경 고려한 경로 설정
-        import sys
-        if getattr(sys, 'frozen', False):
-            # PyInstaller로 패키징된 경우 - 임시 디렉토리 기준
-            base_path = Path(sys._MEIPASS)
-        else:
-            # 일반 Python 실행 - 현재 디렉토리 기준
-            base_path = Path.cwd()
-
-        script_path = base_path / test_info['script']
-
-        # 스크립트 존재 확인
-        if not script_path.exists():
-            self.log(f"✗ 스크립트 파일을 찾을 수 없습니다: {script_path}", "error")
-            self.log(f"  Base Path: {base_path}", "error")
-            self.log(f"  Script: {test_info['script']}", "error")
-            self._finish_test(False)
-            return
-
         try:
-            # stdout/stderr 캡처
+            # stdout/stderr 캡처 설정
             old_stdout = sys.stdout
             old_stderr = sys.stderr
 
-            captured_output = io.StringIO()
-            sys.stdout = captured_output
-            sys.stderr = captured_output
+            # 커스텀 출력 스트림
+            class GuiOutputStream:
+                def __init__(self, log_func, root):
+                    self.log_func = log_func
+                    self.root = root
+                    self.buffer = ""
 
-            # 스크립트 실행
+                def write(self, text):
+                    self.buffer += text
+                    if '\n' in self.buffer:
+                        lines = self.buffer.split('\n')
+                        for line in lines[:-1]:
+                            if line.strip():
+                                # 로그 레벨에 따라 색상 적용
+                                if "✓" in line or "성공" in line or "PASS" in line:
+                                    self.root.after(0, self.log_func, line, "success")
+                                elif "✗" in line or "실패" in line or "FAIL" in line or "ERROR" in line:
+                                    self.root.after(0, self.log_func, line, "error")
+                                elif "⚠" in line or "경고" in line or "WARNING" in line:
+                                    self.root.after(0, self.log_func, line, "warning")
+                                elif "=" in line or "단계" in line or "[" in line:
+                                    self.root.after(0, self.log_func, line, "header")
+                                else:
+                                    self.root.after(0, self.log_func, line)
+                        self.buffer = lines[-1]
+
+                def flush(self):
+                    pass
+
+            gui_output = GuiOutputStream(self.log, self.root)
+            sys.stdout = gui_output
+            sys.stderr = gui_output
+
+            # 테스트 모듈 import 및 실행
             self.log(f"▶ 테스트 실행 중...", "info")
             self.log("")
 
-            # 파이썬 스크립트로 실행
-            import subprocess
-            import sys as system
+            # 동적 import
+            import importlib
+            module_name = test_info['module']
 
-            process = subprocess.Popen(
-                [system.executable, str(script_path)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                universal_newlines=True,
-                encoding='utf-8',
-                errors='replace'
-            )
+            try:
+                test_module = importlib.import_module(module_name)
+            except ImportError as e:
+                self.log(f"✗ 모듈을 찾을 수 없습니다: {module_name}", "error")
+                self.log(f"  오류: {e}", "error")
+                self._finish_test(False)
+                return
 
-            # 실시간 출력 읽기
-            for line in iter(process.stdout.readline, ''):
-                if not self.is_running:  # 중지 요청 확인
-                    process.terminate()
-                    self.log("\n⏹ 테스트가 사용자에 의해 중지되었습니다.", "warning")
-                    break
+            # main() 함수 실행
+            if not hasattr(test_module, 'main'):
+                self.log(f"✗ {module_name}에 main() 함수가 없습니다", "error")
+                self._finish_test(False)
+                return
 
-                line = line.rstrip()
-                if line:
-                    # 로그 레벨에 따라 색상 적용
-                    if "✓" in line or "성공" in line or "PASS" in line:
-                        self.root.after(0, self.log, line, "success")
-                    elif "✗" in line or "실패" in line or "FAIL" in line or "ERROR" in line:
-                        self.root.after(0, self.log, line, "error")
-                    elif "⚠" in line or "경고" in line or "WARNING" in line:
-                        self.root.after(0, self.log, line, "warning")
-                    elif "=" in line or "단계" in line or "[" in line:
-                        self.root.after(0, self.log, line, "header")
-                    else:
-                        self.root.after(0, self.log, line)
-
-            process.wait()
+            # 테스트 실행
+            try:
+                test_module.main()
+                success = True
+            except Exception as e:
+                self.log(f"\n✗ 테스트 실행 중 오류: {e}", "error")
+                import traceback
+                self.log(traceback.format_exc(), "error")
+                success = False
 
             # 복원
             sys.stdout = old_stdout
             sys.stderr = old_stderr
 
-            # 결과 판정
-            success = process.returncode == 0
-
-            self.log("")
+            # 결과 출력
+            self.root.after(0, self.log, "")
             if success:
-                self.log("="*60, "header")
-                self.log("✓ 테스트 완료 - 성공", "success")
-                self.log("="*60, "header")
+                self.root.after(0, self.log, "="*60, "header")
+                self.root.after(0, self.log, "✓ 테스트 완료 - 성공", "success")
+                self.root.after(0, self.log, "="*60, "header")
             else:
-                self.log("="*60, "header")
-                self.log("✗ 테스트 완료 - 실패", "error")
-                self.log("="*60, "header")
+                self.root.after(0, self.log, "="*60, "header")
+                self.root.after(0, self.log, "✗ 테스트 완료 - 실패", "error")
+                self.root.after(0, self.log, "="*60, "header")
 
             self._finish_test(success)
 
@@ -394,8 +392,10 @@ class TestRunnerGUI:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
 
-            self.log("", "")
-            self.log(f"✗ 테스트 실행 중 오류 발생: {e}", "error")
+            self.root.after(0, self.log, "")
+            self.root.after(0, self.log, f"✗ 테스트 실행 중 오류 발생: {e}", "error")
+            import traceback
+            self.root.after(0, self.log, traceback.format_exc(), "error")
             self._finish_test(False)
 
     def _finish_test(self, success):
