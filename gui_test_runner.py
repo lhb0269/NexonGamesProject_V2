@@ -327,7 +327,9 @@ class TestRunnerGUI:
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
-                universal_newlines=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='replace'
             )
 
             # 실시간 출력 읽기
