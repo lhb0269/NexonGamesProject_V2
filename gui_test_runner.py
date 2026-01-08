@@ -124,12 +124,6 @@ class TestRunnerGUI:
                 "color": "#FF9800"
             },
             {
-                "name": "스킬 코스트 OCR 테스트",
-                "description": "전투 중 스킬 버튼 코스트 및 현재 코스트 인식 테스트",
-                "module": "tests.test_skill_cost_ocr",
-                "color": "#00BCD4"
-            },
-            {
                 "name": "스킬 사용 시스템 테스트",
                 "description": "스킬 사용 및 코스트 소모 검증 (단일/다중 스킬)",
                 "module": "tests.test_skill_usage",
