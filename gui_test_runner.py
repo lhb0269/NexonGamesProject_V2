@@ -124,6 +124,12 @@ class TestRunnerGUI:
                 "color": "#FF9800"
             },
             {
+                "name": "스킬 사용 시스템 테스트",
+                "description": "스킬 사용 및 코스트 소모 검증 (단일/다중 스킬)",
+                "module": "tests.test_skill_usage",
+                "color": "#673AB7"
+            },
+            {
                 "name": "단계 6: 전투 결과 확인",
                 "description": "Victory → 통계 → 데미지 기록 → 랭크 획득",
                 "module": "tests.test_battle_result",
