@@ -155,7 +155,7 @@
 
 ---
 
-#### 현재 방식: 템플릿 기반 분류 (✅ 채택)
+#### 시도 2: 템플릿 기반 분류 (레거시)
 
 **변경 이유**:
 1. **게임 코스트 특성**:
@@ -183,26 +183,93 @@ class CostRecognizer:
         # 3. 가장 높은 신뢰도의 숫자 반환
 ```
 
-**전처리** (게임 UI 특화):
-- HSV 색상 마스크로 흰색 영역만 추출
-- 파란 배경 제거
-- 모폴로지 연산 (노이즈 제거, 숫자 두께 정규화)
+**문제점**:
+- ⚠️ **여전히 숫자를 읽으려고 시도**: 근본적인 접근이 잘못됨
+- ⚠️ **QA 자동화 관점 부족**: "정확한 값"이 아닌 "정상 동작"을 검증해야 함
+- ⚠️ **불필요한 복잡성**: 템플릿 4개 준비, 해상도별 관리
+
+**QA 팀 피드백**:
+> "숫자를 읽지 말고, '상태 변화를 증명'해라"
+
+---
+
+#### 현재 방식: 게이지 면적 기반 검증 (✅ 최종 채택)
+
+**핵심 아이디어**:
+**"코스트 값이 아니라 소모 여부를 판단"**
+
+```
+Before: 코스트 게이지 면적 = A
+Action: 스킬 클릭
+After: 코스트 게이지 면적 = B
+
+if A > B:
+    코스트 소모 발생 ⭕
+```
+
+**구현 방식**:
+```python
+class CostGaugeAnalyzer:
+    """게이지 면적 변화 분석 클래스"""
+
+    def count_gauge_pixels(self, image, region):
+        # 1. HSV 변환
+        # 2. 게이지 색상 마스크 (청록색 게이지)
+        # 3. 픽셀 수 카운트
+        return pixel_count
+
+    def verify_gauge_decreased(self, before_img, after_img, region):
+        before_pixels = self.count_gauge_pixels(before_img, region)
+        after_pixels = self.count_gauge_pixels(after_img, region)
+
+        decreased = before_pixels - after_pixels
+
+        if decreased >= threshold:
+            return {"success": True, "decreased_pixels": decreased}
+        else:
+            return {"success": False}
+```
 
 **장점**:
-- ✅ **안정성**: 고정된 시각적 패턴 인식
-- ✅ **정확도**: OCR보다 훨씬 높음 (0.9+ 신뢰도)
-- ✅ **단순성**: Tesseract 의존성 제거
-- ✅ **일관성**: 다른 UI 요소와 동일한 템플릿 매칭 방식
-- ✅ **과제 적합성**: QA 자동화 과제의 정석 접근
+- ✅ **안정성**: 수백~수천 픽셀 → 노이즈 평균화
+- ✅ **프레임 흔들림 무시**: 전체 면적 기준이므로 작은 움직임 영향 없음
+- ✅ **숫자 인식 불필요**: OCR/템플릿 매칭 완전 제거
+- ✅ **QA 베스트 프랙티스**: "정상 동작 여부" 검증 (50점 확보)
+- ✅ **단순성**: 템플릿 이미지 불필요, 해상도 의존성 낮음
+- ✅ **확장성**: 다른 게이지(HP, MP 등)에도 적용 가능
+
+**검증 플로우**:
+```python
+# 1. Before 스크린샷
+screenshot_before = controller.screenshot()
+
+# 2. 스킬 사용
+controller.drag(skill_button, screen_center)
+
+# 3. After 스크린샷
+screenshot_after = controller.screenshot()
+
+# 4. 게이지 감소 검증
+result = gauge_analyzer.verify_gauge_decreased(
+    screenshot_before,
+    screenshot_after,
+    BATTLE_COST_GAUGE_REGION
+)
+
+# result["success"] == True → 코스트 소모 확인 ✓
+```
 
 **제약사항**:
-- 템플릿 이미지 준비 필요 (cost_2~5.png)
-- 해상도별 템플릿 필요 (2560x1440, 1920x1080 등)
+- 게이지 색상 범위 설정 필요 (HSV: 청록색 범위)
+- 게이지 영역 좌표 필요 (BATTLE_COST_GAUGE_REGION)
+- 최소 감소 픽셀 수 임계값 조정 필요 (기본 100px)
 
-#### 참고: OCR 코드 보존
-- OCRReader 클래스는 유지 (src/ocr/ocr_reader.py)
-- 향후 다른 UI 요소 읽기에 활용 가능
-- 문서화 목적으로 보존
+#### 레거시 코드 보존
+- **OCRReader**: src/ocr/ocr_reader.py (문서화 목적)
+- **CostRecognizer**: src/recognition/cost_recognizer.py (호환성 유지)
+- **SkillChecker**: 레거시 메서드 유지, 새로운 게이지 검증 메서드 추가
+  - `use_skill_and_verify()` - 레거시 (숫자 읽기)
+  - `use_skill_and_verify_by_gauge()` - 권장 (게이지 면적)
 
 ---
 

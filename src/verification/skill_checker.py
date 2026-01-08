@@ -1,4 +1,4 @@
-"""스킬 사용 검증 모듈 (템플릿 기반 코스트 인식)"""
+"""스킬 사용 검증 모듈 (게이지 면적 기반 코스트 검증)"""
 
 import logging
 import time
@@ -8,6 +8,7 @@ from PIL import Image
 
 from src.recognition.template_matcher import TemplateMatcher
 from src.recognition.cost_recognizer import CostRecognizer
+from src.recognition.cost_gauge_analyzer import CostGaugeAnalyzer
 from src.automation.game_controller import GameController
 from config.settings import (
     SKILL_CHECK_INTERVAL,
@@ -16,7 +17,8 @@ from config.settings import (
 )
 from config.ocr_regions import (
     BATTLE_COST_VALUE_REGION,
-    BATTLE_COST_MAX_REGION
+    BATTLE_COST_MAX_REGION,
+    BATTLE_COST_GAUGE_REGION
 )
 from config.skill_settings import (
     get_skill_button_position,
@@ -30,32 +32,44 @@ logger = logging.getLogger(__name__)
 
 
 class SkillChecker:
-    """스킬 사용 검증 클래스 (템플릿 기반 코스트 인식)"""
+    """스킬 사용 검증 클래스 (게이지 면적 기반 코스트 검증)"""
 
     def __init__(
         self,
         matcher: TemplateMatcher,
         controller: GameController,
-        enable_cost_check: bool = True
+        enable_cost_check: bool = True,
+        use_gauge_verification: bool = True
     ):
         """
         Args:
             matcher: 템플릿 매칭 객체
             controller: 게임 컨트롤러 객체
             enable_cost_check: 코스트 검증 활성화 여부
+            use_gauge_verification: 게이지 면적 기반 검증 사용 (권장)
         """
         self.matcher = matcher
         self.controller = controller
         self.enable_cost_check = enable_cost_check
+        self.use_gauge_verification = use_gauge_verification
 
-        # CostRecognizer 초기화
+        # CostRecognizer 초기화 (레거시, 호환성 유지)
         self.cost_recognizer = None
-        if self.enable_cost_check:
+        if self.enable_cost_check and not use_gauge_verification:
             try:
                 self.cost_recognizer = CostRecognizer()
-                logger.info("템플릿 기반 코스트 인식 활성화됨")
+                logger.info("템플릿 기반 코스트 인식 활성화됨 (레거시)")
             except Exception as e:
-                logger.warning(f"CostRecognizer 초기화 실패: {e}. 코스트 검증 비활성화됨")
+                logger.warning(f"CostRecognizer 초기화 실패: {e}")
+
+        # CostGaugeAnalyzer 초기화 (권장 방식)
+        self.gauge_analyzer = None
+        if self.enable_cost_check and use_gauge_verification:
+            try:
+                self.gauge_analyzer = CostGaugeAnalyzer()
+                logger.info("게이지 면적 기반 코스트 검증 활성화됨 (권장)")
+            except Exception as e:
+                logger.error(f"CostGaugeAnalyzer 초기화 실패: {e}")
                 self.enable_cost_check = False
 
     def verify_skill_usage(
@@ -666,6 +680,194 @@ class SkillChecker:
                 result["message"] = (
                     f"[{student_name}] 코스트 불일치: "
                     f"예상 {skill_cost}, 실제 소모 {consumed}"
+                )
+                logger.warning(result["message"])
+
+        except Exception as e:
+            result["message"] = f"[{student_name}] 스킬 사용 중 오류: {e}"
+            logger.error(result["message"])
+            import traceback
+            traceback.print_exc()
+
+        return result
+
+    # ========================================
+    # 게이지 면적 기반 코스트 검증 (권장)
+    # ========================================
+
+    def verify_cost_consumption_by_gauge(
+        self,
+        before_screenshot: Image.Image,
+        after_screenshot: Image.Image,
+        gauge_region: Optional[Tuple[int, int, int, int]] = None,
+        min_decrease_threshold: int = 100
+    ) -> Dict[str, Any]:
+        """
+        게이지 면적 변화로 코스트 소모 검증 (숫자 읽기 대체)
+
+        Before/After 이미지의 게이지 픽셀 수를 비교하여
+        코스트가 소모되었는지 확인
+
+        장점:
+        - 많은 픽셀 → 노이즈 평균화
+        - 프레임 흔들림 영향 적음
+        - OCR/템플릿 매칭 불필요
+        - QA 자동화 베스트 프랙티스
+
+        Args:
+            before_screenshot: 액션 전 PIL 이미지
+            after_screenshot: 액션 후 PIL 이미지
+            gauge_region: 게이지 영역 (None이면 기본값 사용)
+            min_decrease_threshold: 최소 감소 픽셀 수 (기본 100)
+
+        Returns:
+            검증 결과 딕셔너리
+            {
+                "success": bool,
+                "before_pixels": int,
+                "after_pixels": int,
+                "decreased_pixels": int,
+                "decreased_ratio": float,
+                "message": str
+            }
+        """
+        if not self.enable_cost_check or not self.gauge_analyzer:
+            return {
+                "success": False,
+                "message": "게이지 분석기가 비활성화되어 있습니다"
+            }
+
+        # 기본 게이지 영역 사용
+        if gauge_region is None:
+            gauge_region = BATTLE_COST_GAUGE_REGION
+
+        try:
+            # 게이지 감소 검증
+            result = self.gauge_analyzer.verify_gauge_decreased_from_screenshots(
+                before_screenshot=before_screenshot,
+                after_screenshot=after_screenshot,
+                region=gauge_region,
+                min_decrease_threshold=min_decrease_threshold
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"게이지 검증 중 오류: {e}")
+            return {
+                "success": False,
+                "message": f"게이지 검증 중 오류: {e}"
+            }
+
+    def use_skill_and_verify_by_gauge(
+        self,
+        slot_index: int,
+        student_name: str = "Unknown",
+        min_decrease_threshold: int = 100
+    ) -> Dict[str, Any]:
+        """
+        스킬 사용 + 게이지 면적 기반 코스트 소모 검증 (권장)
+
+        전체 플로우:
+        1. Before 스크린샷 캡처
+        2. 스킬 버튼에서 화면 중앙으로 드래그 (0.5초)
+        3. 대기 (코스트 UI 업데이트)
+        4. After 스크린샷 캡처
+        5. 게이지 면적 변화 검증 (Before > After)
+
+        Args:
+            slot_index: 스킬 슬롯 인덱스 (0=슬롯1, 1=슬롯2, 2=슬롯3)
+            student_name: 학생 이름 (로깅용)
+            min_decrease_threshold: 최소 감소 픽셀 수 (기본 100)
+
+        Returns:
+            검증 결과 딕셔너리
+            {
+                "success": bool,
+                "student_name": str,
+                "slot_index": int,
+                "before_pixels": int,
+                "after_pixels": int,
+                "decreased_pixels": int,
+                "decreased_ratio": float,
+                "message": str
+            }
+        """
+        result = {
+            "success": False,
+            "student_name": student_name,
+            "slot_index": slot_index,
+            "before_pixels": 0,
+            "after_pixels": 0,
+            "decreased_pixels": 0,
+            "decreased_ratio": 0.0,
+            "message": ""
+        }
+
+        logger.info(f"[{student_name}] 슬롯 {slot_index + 1} 스킬 사용 시작 (게이지 검증)")
+
+        # 게이지 분석기 체크
+        if not self.enable_cost_check or not self.gauge_analyzer:
+            result["message"] = "게이지 분석기가 비활성화되어 있습니다"
+            logger.error(result["message"])
+            return result
+
+        # 슬롯 위치 가져오기
+        button_position = get_skill_button_position(slot_index)
+        if button_position is None:
+            result["message"] = f"잘못된 슬롯 인덱스: {slot_index}"
+            logger.error(result["message"])
+            return result
+
+        try:
+            # 1. Before 스크린샷 캡처
+            logger.info(f"[{student_name}] Before 스크린샷 캡처")
+            screenshot_before = self.controller.screenshot()
+
+            # 2. 스킬 버튼에서 화면 중앙으로 드래그
+            logger.info(
+                f"[{student_name}] 스킬 드래그: {button_position} → "
+                f"({SCREEN_CENTER_X}, {SCREEN_CENTER_Y})"
+            )
+            self.controller.drag(
+                start_x=button_position[0],
+                start_y=button_position[1],
+                end_x=SCREEN_CENTER_X,
+                end_y=SCREEN_CENTER_Y,
+                duration=0.5
+            )
+
+            # 3. 대기 (코스트 UI 업데이트)
+            time.sleep(TARGET_CLICK_TO_COST_UPDATE_WAIT)
+
+            # 4. After 스크린샷 캡처
+            logger.info(f"[{student_name}] After 스크린샷 캡처")
+            screenshot_after = self.controller.screenshot()
+
+            # 5. 게이지 면적 변화 검증
+            gauge_result = self.verify_cost_consumption_by_gauge(
+                before_screenshot=screenshot_before,
+                after_screenshot=screenshot_after,
+                min_decrease_threshold=min_decrease_threshold
+            )
+
+            # 결과 복사
+            result["success"] = gauge_result["success"]
+            result["before_pixels"] = gauge_result.get("before_pixels", 0)
+            result["after_pixels"] = gauge_result.get("after_pixels", 0)
+            result["decreased_pixels"] = gauge_result.get("decreased_pixels", 0)
+            result["decreased_ratio"] = gauge_result.get("decreased_ratio", 0.0)
+
+            if gauge_result["success"]:
+                result["message"] = (
+                    f"[{student_name}] 스킬 사용 성공 ✓ "
+                    f"(게이지 {result['decreased_pixels']}px 감소, "
+                    f"{result['decreased_ratio']:.1%})"
+                )
+                logger.info(result["message"])
+            else:
+                result["message"] = (
+                    f"[{student_name}] 코스트 소모 감지 실패: {gauge_result['message']}"
                 )
                 logger.warning(result["message"])
 
