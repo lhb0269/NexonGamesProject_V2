@@ -278,7 +278,7 @@ class BattleChecker:
                         continue
 
                     # 템플릿 매칭 시도
-                    exists = self.matcher.template_exists(template_path, confidence=0.8)
+                    exists = self.matcher.template_exists(template_path)
                     conditions_met[element_name] = exists
 
                     if exists:
