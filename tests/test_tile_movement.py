@@ -20,8 +20,9 @@ sys.path.insert(0, str(project_root))
 
 from src.recognition.template_matcher import TemplateMatcher
 from src.automation.game_controller import GameController
+from src.verification.battle_checker import BattleChecker
 from src.logger.test_logger import TestLogger
-from config.settings import ICONS_DIR, UI_DIR, BUTTONS_DIR
+from config.settings import ICONS_DIR, BUTTONS_DIR
 import time
 
 
@@ -34,7 +35,6 @@ def test_tile_movement():
     # 템플릿 경로
     enemy_tile = ICONS_DIR / "enemy_tile.png"
     empty_tile = ICONS_DIR / "empty_tile.png"
-    battle_ui = UI_DIR / "battle_ui.png"
     phase_end_button = BUTTONS_DIR / "phase_end_button.png"
 
     print("\n[템플릿 확인]")
@@ -50,21 +50,23 @@ def test_tile_movement():
     else:
         print(f"✓ 빈 발판 이미지 존재: {empty_tile}")
 
-    if not battle_ui.exists():
-        print(f"✗ 전투 UI 이미지 없음: {battle_ui}")
-        return False
-    else:
-        print(f"✓ 전투 UI 이미지 존재: {battle_ui}")
-
     if not phase_end_button.exists():
         print(f"✗ Phase 종료 버튼 이미지 없음: {phase_end_button}")
         return False
     else:
         print(f"✓ Phase 종료 버튼 이미지 존재: {phase_end_button}")
 
+    print("\n[다중 조건 전투 검증]")
+    print("전투 진입은 BattleChecker의 다중 조건 검증을 사용합니다:")
+    print("  - battle_ui.png")
+    print("  - stage_info_ui.png")
+    print("  - pause_button.png")
+    print("  (3개 중 2개 이상 인식 시 전투 진입으로 판단)")
+
     # 낮은 신뢰도로 매처 생성 (0.5)
     matcher = TemplateMatcher(confidence=0.5)
     controller = GameController()
+    battle_checker = BattleChecker(matcher, controller)
     logger = TestLogger("tile_movement_test")
 
     print("\n" + "="*60)
@@ -141,12 +143,20 @@ def test_tile_movement():
 
     # 3. 결과 확인
     if has_enemy:
-        print("\n[3단계] 전투 진입 확인 중...")
-        battle_started = matcher.wait_for_template(battle_ui, timeout=10)
+        print("\n[3단계] 전투 진입 확인 중 (다중 조건 검증)...")
+        print("  - battle_ui.png, stage_info_ui.png, pause_button.png 확인")
+        print("  - 3개 중 2개 이상 인식되면 전투 진입 성공")
 
-        if battle_started:
-            print(f"✓ 전투 UI 출현 확인: {battle_started}")
-            logger.log_check("전투_진입", True, "전투 UI 출현")
+        battle_result = battle_checker.verify_battle_entry_multi_condition(
+            timeout=15,
+            required_matches=2
+        )
+
+        if battle_result["success"]:
+            print(f"✓ 전투 진입 확인 성공")
+            print(f"  매칭된 조건: {battle_result['match_count']}/3개")
+            print(f"  조건별 결과: {battle_result['conditions_met']}")
+            logger.log_check("전투_진입", True, f"다중 조건 검증 성공 ({battle_result['match_count']}/3)")
 
             # 스크린샷
             screenshot = controller.screenshot()
@@ -157,12 +167,14 @@ def test_tile_movement():
             print("="*60)
             print("\n적 발판 클릭 → 전투 진입이 정상적으로 작동합니다.")
         else:
-            print("✗ 전투 UI가 10초 내에 나타나지 않음")
-            logger.log_check("전투_진입", False, "전투 UI 미출현")
+            print(f"✗ 전투 진입 확인 실패: {battle_result['message']}")
+            print(f"  매칭된 조건: {battle_result['match_count']}/3개")
+            print(f"  조건별 결과: {battle_result['conditions_met']}")
+            logger.log_check("전투_진입", False, f"다중 조건 검증 실패 ({battle_result['match_count']}/3)")
 
             # 스크린샷
             screenshot = controller.screenshot()
-            logger.save_screenshot(screenshot, "battle_ui_timeout")
+            logger.save_screenshot(screenshot, "battle_entry_failed")
 
             print("\n" + "="*60)
             print("✗ 테스트 실패")
