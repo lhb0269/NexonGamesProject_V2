@@ -1,6 +1,7 @@
 """블루 아카이브 자동화 테스트 GUI
 
 tkinter 기반 테스트 실행 및 모니터링 GUI
+체크박스 기반 선택 실행 시스템
 """
 
 import tkinter as tk
@@ -24,14 +25,19 @@ class TestRunnerGUI:
 
         self.root.title("블루 아카이브 자동화 테스트 실행기")
 
-        self.root.geometry("1200x700")
+        self.root.geometry("1300x750")
 
         # 테스트 실행 상태
         self.is_running = False
         self.current_test = None
+        self.test_results = {}  # {module: "PASS"|"FAIL"|"BLOCKED"}
 
         # 현재 해상도 설정
         self.current_resolution = CURRENT_RESOLUTION
+
+        # 체크박스 변수 저장
+        self.test_vars = {}
+        self.test_items = []
 
         # GUI 컴포넌트 초기화
         self.setup_ui()
@@ -66,7 +72,7 @@ class TestRunnerGUI:
         try:
             display_btn = tk.Button(
                 header_frame,
-                text=f"디스플레이: {self.current_resolution}",  # 이모지 제거
+                text=f"디스플레이: {self.current_resolution}",
                 command=self.open_display_settings,
                 bg="#607D8B",
                 fg="white",
@@ -81,8 +87,8 @@ class TestRunnerGUI:
         except Exception as e:
             raise
 
-        # 왼쪽 패널: 테스트 항목 버튼들
-        left_frame = ttk.LabelFrame(main_frame, text="테스트 항목", padding="10")
+        # 왼쪽 패널: 테스트 항목 체크박스
+        left_frame = ttk.LabelFrame(main_frame, text="테스트 선택", padding="10")
         left_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
 
         # 오른쪽 패널: 로그 출력
@@ -91,8 +97,8 @@ class TestRunnerGUI:
         right_frame.columnconfigure(0, weight=1)
         right_frame.rowconfigure(0, weight=1)
 
-        # 테스트 항목 버튼들
-        self.create_test_buttons(left_frame)
+        # 테스트 항목 체크박스 생성
+        self.create_test_checkboxes(left_frame)
 
         # 로그 출력 창
         self.create_log_panel(right_frame)
@@ -100,99 +106,460 @@ class TestRunnerGUI:
         # 하단 상태바
         self.create_status_bar(main_frame)
 
-    def create_test_buttons(self, parent):
-        """테스트 항목 버튼 생성"""
+    def create_test_checkboxes(self, parent):
+        """테스트 항목 체크박스 생성"""
 
-        # 테스트 목록 정의
+        # 테스트 목록 정의 (의존성 포함)
         tests = [
             {
+                "id": "TC-001",
                 "name": "기본 모듈 테스트",
                 "description": "TemplateMatcher, GameController 등 기본 모듈 동작 확인",
                 "module": "tests.test_modules",
-                "color": "#4CAF50"
+                "color": "#4CAF50",
+                "dependencies": []  # 의존성 없음
             },
             {
+                "id": "TC-002",
                 "name": "단계 1-2.5: 스테이지 진입",
                 "description": "시작 발판 → 편성 → 출격 → 맵 → 임무 개시",
                 "module": "tests.test_partial_stage",
-                "color": "#2196F3"
+                "color": "#2196F3",
+                "dependencies": []
             },
             {
+                "id": "TC-003",
                 "name": "단계 3: 발판 이동",
                 "description": "적 발판/빈 발판 클릭 및 이동 테스트",
                 "module": "tests.test_tile_movement",
-                "color": "#FF9800"
+                "color": "#FF9800",
+                "dependencies": ["tests.test_partial_stage"]  # TC-002 필요
             },
             {
+                "id": "TC-005",
                 "name": "스킬 사용 시스템 테스트",
                 "description": "스킬 사용 및 코스트 소모 검증 (단일/다중 스킬)",
                 "module": "tests.test_skill_usage",
-                "color": "#673AB7"
+                "color": "#673AB7",
+                "dependencies": []  # 전투 진입은 수동으로 필요 (자동 의존성 아님)
             },
             {
+                "id": "TC-006",
                 "name": "단계 6: 전투 결과 확인",
                 "description": "Victory → 통계 → 데미지 기록 → 랭크 획득",
                 "module": "tests.test_battle_result",
-                "color": "#9C27B0"
+                "color": "#9C27B0",
+                "dependencies": []  # 전투 종료는 수동으로 필요
             },
             {
+                "id": "TC-007",
                 "name": "전체 플로우 실행",
                 "description": "Normal 1-4 전체 자동 플레이 (단계 1-6)",
                 "module": "tests.test_full_stage",
-                "color": "#F44336"
+                "color": "#F44336",
+                "dependencies": []  # 전체 플로우는 독립 실행
             }
         ]
 
-        # 버튼 생성
-        for idx, test in enumerate(tests):
-            # 버튼 프레임
-            btn_frame = ttk.Frame(parent)
-            btn_frame.grid(row=idx, column=0, pady=5, sticky=(tk.W, tk.E))
+        self.test_items = tests
 
-            # 버튼
-            btn = tk.Button(
-                btn_frame,
-                text=test["name"],
-                command=lambda t=test: self.run_test(t),
-                bg=test["color"],
-                fg="white",
-                font=("TkDefaultFont", 10, "bold"),
-                height=2,
-                cursor="hand2",
-                relief=tk.RAISED,
-                borderwidth=2
+        # 스크롤 가능한 프레임
+        canvas = tk.Canvas(parent, bg="white", highlightthickness=0)
+        scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # 체크박스 생성
+        for idx, test in enumerate(tests):
+            # 체크박스 프레임
+            test_frame = ttk.Frame(scrollable_frame, relief=tk.RIDGE, borderwidth=1)
+            test_frame.grid(row=idx, column=0, pady=5, padx=5, sticky=(tk.W, tk.E))
+
+            # 체크박스 변수
+            var = tk.BooleanVar(value=False)
+            self.test_vars[test['module']] = var
+
+            # 상태 레이블 (Ready/Running/Pass/Fail/Blocked)
+            status_label = ttk.Label(
+                test_frame,
+                text="●",
+                font=("TkDefaultFont", 12),
+                foreground="gray",
+                width=2
             )
-            btn.pack(fill=tk.X, pady=2)
+            status_label.grid(row=0, column=0, padx=(5, 0))
+            test['status_label'] = status_label
+
+            # 체크박스
+            cb = ttk.Checkbutton(
+                test_frame,
+                text=f"{test['id']}: {test['name']}",
+                variable=var,
+                command=lambda: self.update_dependencies()
+            )
+            cb.grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
 
             # 설명 레이블
             desc_label = ttk.Label(
-                btn_frame,
+                test_frame,
                 text=test["description"],
                 font=("TkDefaultFont", 8),
                 foreground="gray"
             )
-            desc_label.pack(fill=tk.X)
+            desc_label.grid(row=1, column=1, sticky=tk.W, padx=5, pady=(0, 5))
 
-            # 구분선
-            if idx < len(tests) - 1:
-                ttk.Separator(parent, orient=tk.HORIZONTAL).grid(
-                    row=idx + 10, column=0, sticky=(tk.W, tk.E), pady=10
+            # 의존성 표시
+            if test['dependencies']:
+                dep_text = "의존성: " + ", ".join([self._get_test_id_by_module(dep) for dep in test['dependencies']])
+                dep_label = ttk.Label(
+                    test_frame,
+                    text=dep_text,
+                    font=("TkDefaultFont", 7),
+                    foreground="#FF5722"
                 )
+                dep_label.grid(row=2, column=1, sticky=tk.W, padx=5, pady=(0, 5))
 
-        # 전체 중지 버튼
-        stop_btn = tk.Button(
-            parent,
-            text="⏹ 테스트 중지",
-            command=self.stop_test,
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # 하단 버튼 프레임
+        button_frame = ttk.Frame(parent)
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
+
+        # 전체 선택/해제 버튼
+        select_all_btn = tk.Button(
+            button_frame,
+            text="전체 선택",
+            command=self.select_all,
+            bg="#2196F3",
+            fg="white",
+            font=("TkDefaultFont", 9),
+            cursor="hand2"
+        )
+        select_all_btn.pack(side=tk.LEFT, padx=2)
+
+        deselect_all_btn = tk.Button(
+            button_frame,
+            text="전체 해제",
+            command=self.deselect_all,
             bg="#607D8B",
             fg="white",
-            font=("TkDefaultFont", 10, "bold"),
-            height=2,
-            cursor="hand2",
-            state=tk.DISABLED
+            font=("TkDefaultFont", 9),
+            cursor="hand2"
         )
-        stop_btn.grid(row=len(tests) + 20, column=0, pady=20, sticky=(tk.W, tk.E))
+        deselect_all_btn.pack(side=tk.LEFT, padx=2)
+
+        # 선택 항목 실행 버튼
+        run_selected_btn = tk.Button(
+            button_frame,
+            text="▶ 선택 항목 실행",
+            command=self.run_selected_tests,
+            bg="#4CAF50",
+            fg="white",
+            font=("TkDefaultFont", 10, "bold"),
+            cursor="hand2",
+            height=2
+        )
+        run_selected_btn.pack(side=tk.RIGHT, padx=2, fill=tk.X, expand=True)
+        self.run_selected_btn = run_selected_btn
+
+        # 중지 버튼
+        stop_btn = tk.Button(
+            button_frame,
+            text="⏹ 중지",
+            command=self.stop_test,
+            bg="#F44336",
+            fg="white",
+            font=("TkDefaultFont", 10, "bold"),
+            cursor="hand2",
+            state=tk.DISABLED,
+            height=2
+        )
+        stop_btn.pack(side=tk.RIGHT, padx=2)
         self.stop_btn = stop_btn
+
+    def _get_test_id_by_module(self, module):
+        """모듈명으로 테스트 ID 찾기"""
+        for test in self.test_items:
+            if test['module'] == module:
+                return test['id']
+        return module
+
+    def select_all(self):
+        """모든 테스트 선택"""
+        for var in self.test_vars.values():
+            var.set(True)
+        self.update_dependencies()
+
+    def deselect_all(self):
+        """모든 테스트 해제"""
+        for var in self.test_vars.values():
+            var.set(False)
+        self.update_dependencies()
+
+    def update_dependencies(self):
+        """의존성 체크 및 Block 상태 업데이트"""
+        # 현재 선택된 테스트
+        selected = [test['module'] for test in self.test_items if self.test_vars[test['module']].get()]
+
+        for test in self.test_items:
+            # 의존성 체크
+            if test['dependencies']:
+                deps_satisfied = all(
+                    self.test_results.get(dep) == "PASS" for dep in test['dependencies']
+                )
+
+                if not deps_satisfied and test['module'] in selected:
+                    # 의존성 미충족이지만 선택된 경우
+                    missing_deps = [
+                        self._get_test_id_by_module(dep)
+                        for dep in test['dependencies']
+                        if self.test_results.get(dep) != "PASS"
+                    ]
+                    # 체크 해제하지 않고 경고만 표시 (실행 시 Block 처리)
+
+    def run_selected_tests(self):
+        """선택된 테스트 순차 실행"""
+        if self.is_running:
+            self.log("⚠ 테스트가 이미 실행 중입니다.", "warning")
+            return
+
+        # 선택된 테스트 필터링
+        selected_tests = [test for test in self.test_items if self.test_vars[test['module']].get()]
+
+        if not selected_tests:
+            messagebox.showwarning("선택 없음", "실행할 테스트를 선택해주세요.")
+            return
+
+        self.log(f"✓ {len(selected_tests)}개 테스트 선택됨", "success")
+        self.log("")
+
+        # 백그라운드 스레드에서 순차 실행
+        thread = threading.Thread(target=self._run_tests_sequentially, args=(selected_tests,))
+        thread.daemon = True
+        thread.start()
+
+    def _run_tests_sequentially(self, tests):
+        """선택된 테스트를 순차적으로 실행"""
+        self.is_running = True
+        self.root.after(0, lambda: self.run_selected_btn.config(state=tk.DISABLED))
+        self.root.after(0, lambda: self.stop_btn.config(state=tk.NORMAL))
+        self.root.after(0, self.progress_bar.start, 10)
+
+        for idx, test in enumerate(tests):
+            if not self.is_running:
+                self.root.after(0, self.log, "\n⏹ 사용자가 테스트를 중지했습니다.", "warning")
+                break
+
+            self.root.after(0, self.log, f"\n{'='*60}", "header")
+            self.root.after(0, self.log, f"[{idx+1}/{len(tests)}] {test['id']}: {test['name']}", "header")
+            self.root.after(0, self.log, f"{'='*60}", "header")
+
+            # 의존성 체크
+            if test['dependencies']:
+                deps_satisfied = all(
+                    self.test_results.get(dep) == "PASS" for dep in test['dependencies']
+                )
+
+                if not deps_satisfied:
+                    missing_deps = [
+                        self._get_test_id_by_module(dep)
+                        for dep in test['dependencies']
+                        if self.test_results.get(dep) != "PASS"
+                    ]
+                    self.root.after(0, self.log, f"⚠ 의존성 미충족: {', '.join(missing_deps)}", "warning")
+                    self.root.after(0, self.log, "✗ 테스트 건너뜀 (BLOCKED)", "error")
+                    self.test_results[test['module']] = "BLOCKED"
+                    self.root.after(0, self._update_status_label, test, "BLOCKED")
+                    continue
+
+            # 상태 업데이트: Running
+            self.root.after(0, self._update_status_label, test, "RUNNING")
+
+            # 테스트 실행
+            success = self._execute_single_test(test)
+
+            # 결과 저장 및 상태 업데이트
+            if success:
+                self.test_results[test['module']] = "PASS"
+                self.root.after(0, self._update_status_label, test, "PASS")
+            else:
+                self.test_results[test['module']] = "FAIL"
+                self.root.after(0, self._update_status_label, test, "FAIL")
+
+        # 종료 처리
+        self.root.after(0, self._finish_all_tests, tests)
+
+    def _execute_single_test(self, test_info):
+        """단일 테스트 실행"""
+        try:
+            # stdout/stderr 캡처 설정
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+
+            # 커스텀 출력 스트림
+            class GuiOutputStream:
+                def __init__(self, log_func, root):
+                    self.log_func = log_func
+                    self.root = root
+                    self._buffer = ""
+                    self.buffer = self
+                    self.encoding = 'utf-8'
+                    self.errors = 'replace'
+
+                def write(self, text):
+                    self._buffer += text
+                    if '\n' in self._buffer:
+                        lines = self._buffer.split('\n')
+                        for line in lines[:-1]:
+                            if line.strip():
+                                # 로그 레벨에 따라 색상 적용
+                                if "✓" in line or "성공" in line or "PASS" in line:
+                                    self.root.after(0, self.log_func, line, "success")
+                                elif "✗" in line or "실패" in line or "FAIL" in line or "ERROR" in line:
+                                    self.root.after(0, self.log_func, line, "error")
+                                elif "⚠" in line or "경고" in line or "WARNING" in line:
+                                    self.root.after(0, self.log_func, line, "warning")
+                                elif "=" in line or "단계" in line or "[" in line:
+                                    self.root.after(0, self.log_func, line, "header")
+                                else:
+                                    self.root.after(0, self.log_func, line)
+                        self._buffer = lines[-1]
+
+                def flush(self):
+                    pass
+
+                def readable(self):
+                    return False
+
+                def writable(self):
+                    return True
+
+                def seekable(self):
+                    return False
+
+                def isatty(self):
+                    return False
+
+                def fileno(self):
+                    raise OSError("GuiOutputStream does not have a file descriptor")
+
+                def close(self):
+                    pass
+
+                @property
+                def closed(self):
+                    return False
+
+            gui_output = GuiOutputStream(self.log, self.root)
+            sys.stdout = gui_output
+            sys.stderr = gui_output
+
+            # 테스트 모듈 import 및 실행
+            self.root.after(0, self.log, f"▶ 테스트 실행 중...", "info")
+            self.root.after(0, self.log, "")
+
+            # 동적 import
+            import importlib
+            module_name = test_info['module']
+
+            try:
+                test_module = importlib.import_module(module_name)
+            except ImportError as e:
+                self.root.after(0, self.log, f"✗ 모듈을 찾을 수 없습니다: {module_name}", "error")
+                self.root.after(0, self.log, f"  오류: {e}", "error")
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
+                return False
+
+            # main() 함수 실행
+            if not hasattr(test_module, 'main'):
+                self.root.after(0, self.log, f"✗ {module_name}에 main() 함수가 없습니다", "error")
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
+                return False
+
+            # 테스트 실행
+            try:
+                test_module.main()
+                success = True
+            except Exception as e:
+                self.root.after(0, self.log, f"\n✗ 테스트 실행 중 오류: {e}", "error")
+                import traceback
+                self.root.after(0, self.log, traceback.format_exc(), "error")
+                success = False
+
+            # 복원
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+            # 결과 출력
+            self.root.after(0, self.log, "")
+            if success:
+                self.root.after(0, self.log, "✓ 테스트 완료 - PASS", "success")
+            else:
+                self.root.after(0, self.log, "✗ 테스트 완료 - FAIL", "error")
+
+            return success
+
+        except Exception as e:
+            # 복원
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+            self.root.after(0, self.log, "")
+            self.root.after(0, self.log, f"✗ 테스트 실행 중 오류 발생: {e}", "error")
+            import traceback
+            self.root.after(0, self.log, traceback.format_exc(), "error")
+            return False
+
+    def _update_status_label(self, test, status):
+        """테스트 상태 레이블 업데이트"""
+        label = test['status_label']
+        if status == "READY":
+            label.config(text="●", foreground="gray")
+        elif status == "RUNNING":
+            label.config(text="▶", foreground="blue")
+        elif status == "PASS":
+            label.config(text="✓", foreground="green")
+        elif status == "FAIL":
+            label.config(text="✗", foreground="red")
+        elif status == "BLOCKED":
+            label.config(text="⊗", foreground="orange")
+
+    def _finish_all_tests(self, tests):
+        """전체 테스트 완료 처리"""
+        self.is_running = False
+        self.progress_bar.stop()
+        self.run_selected_btn.config(state=tk.NORMAL)
+        self.stop_btn.config(state=tk.DISABLED)
+
+        # 결과 요약
+        pass_count = sum(1 for t in tests if self.test_results.get(t['module']) == "PASS")
+        fail_count = sum(1 for t in tests if self.test_results.get(t['module']) == "FAIL")
+        blocked_count = sum(1 for t in tests if self.test_results.get(t['module']) == "BLOCKED")
+
+        self.log("\n" + "="*60, "header")
+        self.log("테스트 완료 요약", "header")
+        self.log("="*60, "header")
+        self.log(f"전체: {len(tests)}개", "info")
+        self.log(f"성공: {pass_count}개", "success")
+        self.log(f"실패: {fail_count}개", "error")
+        self.log(f"건너뜀: {blocked_count}개", "warning")
+
+        if fail_count == 0 and blocked_count == 0:
+            self.update_status("완료 - 모두 성공 ✓")
+        elif fail_count > 0:
+            self.update_status(f"완료 - {fail_count}개 실패 ✗")
+        else:
+            self.update_status(f"완료 - {blocked_count}개 건너뜀 ⚠")
 
     def create_log_panel(self, parent):
         """로그 출력 패널 생성"""
@@ -271,177 +638,6 @@ class TestRunnerGUI:
     def update_status(self, message):
         """상태바 업데이트"""
         self.status_label.config(text=message)
-
-    def run_test(self, test_info):
-        """테스트 실행"""
-
-        if self.is_running:
-            self.log("⚠ 테스트가 이미 실행 중입니다.", "warning")
-            return
-
-        self.is_running = True
-        self.current_test = test_info
-        self.stop_btn.config(state=tk.NORMAL)
-
-        # 로그 초기화
-        self.clear_log()
-
-        # 헤더 출력
-        self.log("="*60, "header")
-        self.log(f"테스트 시작: {test_info['name']}", "header")
-        self.log("="*60, "header")
-        self.log(f"설명: {test_info['description']}", "info")
-        self.log(f"모듈: {test_info['module']}", "info")
-        self.log("")
-
-        # 상태 업데이트
-        self.update_status(f"실행 중: {test_info['name']}")
-        self.progress_bar.start(10)
-
-        # 백그라운드 스레드에서 테스트 실행
-        thread = threading.Thread(target=self._execute_test, args=(test_info,))
-        thread.daemon = True
-        thread.start()
-
-    def _execute_test(self, test_info):
-        """실제 테스트 실행 (백그라운드 스레드)"""
-
-        try:
-            # stdout/stderr 캡처 설정
-            old_stdout = sys.stdout
-            old_stderr = sys.stderr
-
-            # 커스텀 출력 스트림
-            class GuiOutputStream:
-                def __init__(self, log_func, root):
-                    self.log_func = log_func
-                    self.root = root
-                    self._buffer = ""
-                    # TextIOWrapper 호환성을 위한 더미 속성
-                    self.buffer = self  # 자기 자신을 buffer로 설정
-                    self.encoding = 'utf-8'
-                    self.errors = 'replace'
-
-                def write(self, text):
-                    self._buffer += text
-                    if '\n' in self._buffer:
-                        lines = self._buffer.split('\n')
-                        for line in lines[:-1]:
-                            if line.strip():
-                                # 로그 레벨에 따라 색상 적용
-                                if "✓" in line or "성공" in line or "PASS" in line:
-                                    self.root.after(0, self.log_func, line, "success")
-                                elif "✗" in line or "실패" in line or "FAIL" in line or "ERROR" in line:
-                                    self.root.after(0, self.log_func, line, "error")
-                                elif "⚠" in line or "경고" in line or "WARNING" in line:
-                                    self.root.after(0, self.log_func, line, "warning")
-                                elif "=" in line or "단계" in line or "[" in line:
-                                    self.root.after(0, self.log_func, line, "header")
-                                else:
-                                    self.root.after(0, self.log_func, line)
-                        self._buffer = lines[-1]
-
-                def flush(self):
-                    pass
-
-                def readable(self):
-                    return False
-
-                def writable(self):
-                    return True
-
-                def seekable(self):
-                    return False
-
-                def isatty(self):
-                    return False
-
-                def fileno(self):
-                    raise OSError("GuiOutputStream does not have a file descriptor")
-
-                def close(self):
-                    pass
-
-                @property
-                def closed(self):
-                    return False
-
-            gui_output = GuiOutputStream(self.log, self.root)
-            sys.stdout = gui_output
-            sys.stderr = gui_output
-
-            # 테스트 모듈 import 및 실행
-            self.log(f"▶ 테스트 실행 중...", "info")
-            self.log("")
-
-            # 동적 import
-            import importlib
-            module_name = test_info['module']
-
-            try:
-                test_module = importlib.import_module(module_name)
-            except ImportError as e:
-                self.log(f"✗ 모듈을 찾을 수 없습니다: {module_name}", "error")
-                self.log(f"  오류: {e}", "error")
-                self._finish_test(False)
-                return
-
-            # main() 함수 실행
-            if not hasattr(test_module, 'main'):
-                self.log(f"✗ {module_name}에 main() 함수가 없습니다", "error")
-                self._finish_test(False)
-                return
-
-            # 테스트 실행
-            try:
-                test_module.main()
-                success = True
-            except Exception as e:
-                self.log(f"\n✗ 테스트 실행 중 오류: {e}", "error")
-                import traceback
-                self.log(traceback.format_exc(), "error")
-                success = False
-
-            # 복원
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-
-            # 결과 출력
-            self.root.after(0, self.log, "")
-            if success:
-                self.root.after(0, self.log, "="*60, "header")
-                self.root.after(0, self.log, "✓ 테스트 완료 - 성공", "success")
-                self.root.after(0, self.log, "="*60, "header")
-            else:
-                self.root.after(0, self.log, "="*60, "header")
-                self.root.after(0, self.log, "✗ 테스트 완료 - 실패", "error")
-                self.root.after(0, self.log, "="*60, "header")
-
-            self._finish_test(success)
-
-        except Exception as e:
-            # 복원
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-
-            self.root.after(0, self.log, "")
-            self.root.after(0, self.log, f"✗ 테스트 실행 중 오류 발생: {e}", "error")
-            import traceback
-            self.root.after(0, self.log, traceback.format_exc(), "error")
-            self._finish_test(False)
-
-    def _finish_test(self, success):
-        """테스트 종료 처리"""
-
-        self.is_running = False
-        self.current_test = None
-        self.progress_bar.stop()
-        self.stop_btn.config(state=tk.DISABLED)
-
-        if success:
-            self.update_status("완료 - 성공 ✓")
-        else:
-            self.update_status("완료 - 실패 ✗")
 
     def stop_test(self):
         """테스트 중지"""
@@ -562,7 +758,7 @@ class TestRunnerGUI:
             # 설정 저장
             save_display_settings(new_resolution)
             self.current_resolution = new_resolution
-            self.display_btn.config(text=f"🖥 디스플레이: {new_resolution}")
+            self.display_btn.config(text=f"디스플레이: {new_resolution}")
 
             self.log(f"✓ 디스플레이 해상도 변경: {new_resolution}", "success")
             self.log(f"  템플릿 디렉토리: {new_res_dir}", "info")
@@ -613,12 +809,13 @@ def main():
 
         # 초기 메시지
         app.log("블루 아카이브 자동화 테스트 실행기가 시작되었습니다.", "info")
-        app.log("왼쪽에서 실행할 테스트를 선택하세요.", "info")
+        app.log("왼쪽에서 실행할 테스트를 선택하고 '선택 항목 실행' 버튼을 클릭하세요.", "info")
         app.log("")
         app.log("⚠ 주의사항:", "warning")
         app.log("  1. 게임이 실행되어 있어야 합니다.", "warning")
         app.log("  2. 게임 화면이 보이는 상태여야 합니다.", "warning")
         app.log("  3. 테스트 시작 전 해당 화면으로 이동해주세요.", "warning")
+        app.log("  4. 의존성이 있는 테스트는 선행 테스트 성공 필요합니다.", "warning")
         app.log("")
 
         root.mainloop()
