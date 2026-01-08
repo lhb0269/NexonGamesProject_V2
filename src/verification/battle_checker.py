@@ -212,3 +212,105 @@ class BattleChecker:
             battle_ui_template = UI_DIR / "battle_ui.png"
 
         return self.matcher.template_exists(battle_ui_template)
+
+    def verify_battle_entry_multi_condition(
+        self,
+        timeout: int = 15,
+        required_matches: int = 2
+    ) -> Dict[str, Any]:
+        """
+        다중 조건으로 전투 진입 검증 (개선된 방식)
+
+        전투 화면 특유의 UI 요소 3가지를 확인:
+        1. battle_ui.png - 전투 UI 전체
+        2. stage_info_ui.png - 상단 스테이지 정보 UI
+        3. pause_button.png - 일시정지 버튼
+
+        3개 중 required_matches개 이상 인식되면 전투 진입으로 판단
+        (기본값: 2개 이상)
+
+        Args:
+            timeout: 최대 대기 시간 (초)
+            required_matches: 필요한 최소 매칭 개수 (기본 2)
+
+        Returns:
+            검증 결과 딕셔너리
+            {
+                "success": bool,
+                "battle_started": bool,
+                "conditions_met": Dict[str, bool],  # 각 조건별 결과
+                "match_count": int,  # 매칭된 조건 개수
+                "message": str
+            }
+        """
+        result = {
+            "success": False,
+            "battle_started": False,
+            "conditions_met": {},
+            "match_count": 0,
+            "message": ""
+        }
+
+        logger.info("전투 진입 다중 조건 검증 시작")
+
+        # 전투 UI 요소 템플릿 정의
+        battle_elements = {
+            "battle_ui": UI_DIR / "battle_ui.png",
+            "stage_info": UI_DIR / "stage_info_ui.png",
+            "pause_button": BUTTONS_DIR / "pause_button.png"
+        }
+
+        # 시작 시간
+        start_time = time.time()
+        check_interval = 0.5  # 0.5초마다 확인
+
+        while time.time() - start_time < timeout:
+            conditions_met = {}
+            match_count = 0
+
+            # 각 UI 요소 확인
+            for element_name, template_path in battle_elements.items():
+                try:
+                    # 템플릿 파일 존재 확인
+                    if not Path(template_path).exists():
+                        logger.warning(f"템플릿 파일 없음: {template_path} (건너뜀)")
+                        conditions_met[element_name] = None  # 파일 없음
+                        continue
+
+                    # 템플릿 매칭 시도
+                    exists = self.matcher.template_exists(template_path, confidence=0.8)
+                    conditions_met[element_name] = exists
+
+                    if exists:
+                        match_count += 1
+                        logger.info(f"✓ {element_name} 인식 성공")
+                    else:
+                        logger.debug(f"✗ {element_name} 인식 실패")
+
+                except Exception as e:
+                    logger.warning(f"{element_name} 확인 중 오류: {e}")
+                    conditions_met[element_name] = False
+
+            # 결과 업데이트
+            result["conditions_met"] = conditions_met
+            result["match_count"] = match_count
+
+            # 충분한 조건 충족 시 성공
+            if match_count >= required_matches:
+                result["battle_started"] = True
+                result["success"] = True
+                result["message"] = f"전투 진입 확인 ({match_count}/{len(battle_elements)}개 조건 충족)"
+                logger.info(result["message"])
+                logger.info(f"충족 조건: {[k for k, v in conditions_met.items() if v is True]}")
+                return result
+
+            # 재시도 대기
+            time.sleep(check_interval)
+
+        # 타임아웃
+        result["message"] = f"전투 진입 확인 실패 (타임아웃: {match_count}/{required_matches}개 조건만 충족)"
+        logger.warning(result["message"])
+        logger.warning(f"충족 조건: {[k for k, v in conditions_met.items() if v is True]}")
+        logger.warning(f"미충족 조건: {[k for k, v in conditions_met.items() if v is False]}")
+
+        return result
