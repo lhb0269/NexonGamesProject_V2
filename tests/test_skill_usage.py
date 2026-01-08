@@ -17,27 +17,30 @@ from src.verification.skill_checker import SkillChecker
 from src.logger.test_logger import TestLogger
 
 
-def test_ocr_initialization():
-    """OCR 초기화 테스트"""
+def test_cost_recognizer_initialization():
+    """코스트 인식 초기화 테스트"""
     print("=" * 70)
-    print("[테스트 1] OCR 초기화")
+    print("[테스트 1] 템플릿 기반 코스트 인식 초기화")
     print("=" * 70)
 
     try:
         matcher = TemplateMatcher()
         controller = GameController()
-        checker = SkillChecker(matcher, controller, enable_ocr=True)
+        checker = SkillChecker(matcher, controller, enable_cost_check=True)
 
-        if checker.enable_ocr and checker.ocr_reader:
-            print("✓ OCR 초기화 성공")
-            print(f"  - OCR 활성화: {checker.enable_ocr}")
+        if checker.enable_cost_check and checker.cost_recognizer:
+            print("✓ CostRecognizer 초기화 성공")
+            print(f"  - 코스트 인식 활성화: {checker.enable_cost_check}")
+            print(f"  - 로드된 템플릿: {list(checker.cost_recognizer.templates.keys())}")
             return True, checker
         else:
-            print("✗ OCR 초기화 실패")
+            print("✗ CostRecognizer 초기화 실패")
             return False, None
 
     except Exception as e:
         print(f"✗ 예외 발생: {e}")
+        import traceback
+        traceback.print_exc()
         return False, None
 
 
@@ -291,20 +294,20 @@ def test_insufficient_cost_scenario(checker: SkillChecker):
 def main():
     """전체 테스트 실행"""
     print("=" * 70)
-    print("스킬 사용 시스템 테스트")
+    print("스킬 사용 시스템 테스트 (템플릿 기반 코스트 인식)")
     print("=" * 70)
     print()
     print("주의사항:")
-    print("- Tesseract OCR이 설치되어 있어야 합니다")
+    print("- 코스트 템플릿 (cost_2~5.png)이 준비되어 있어야 합니다")
     print("- config/skill_settings.py의 좌표가 정확해야 합니다")
     print("- config/ocr_regions.py의 코스트 영역이 정확해야 합니다")
     print("- 게임 해상도: 2560x1440")
     print()
 
-    # OCR 초기화
-    success, checker = test_ocr_initialization()
+    # CostRecognizer 초기화
+    success, checker = test_cost_recognizer_initialization()
     if not success:
-        print("\nOCR 초기화 실패. 테스트를 중단합니다.")
+        print("\n코스트 인식 초기화 실패. 테스트를 중단합니다.")
         return
 
     # 테스트 목록

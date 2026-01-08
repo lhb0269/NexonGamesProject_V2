@@ -1,4 +1,4 @@
-"""스킬 사용 검증 모듈 (OCR 통합)"""
+"""스킬 사용 검증 모듈 (템플릿 기반 코스트 인식)"""
 
 import logging
 import time
@@ -7,8 +7,8 @@ from typing import Optional, Dict, Any, List, Tuple
 from PIL import Image
 
 from src.recognition.template_matcher import TemplateMatcher
+from src.recognition.cost_recognizer import CostRecognizer
 from src.automation.game_controller import GameController
-from src.ocr import OCRReader
 from config.settings import (
     SKILL_CHECK_INTERVAL,
     MAX_SKILL_WAIT_TIME,
@@ -30,33 +30,33 @@ logger = logging.getLogger(__name__)
 
 
 class SkillChecker:
-    """스킬 사용 검증 클래스 (OCR 통합)"""
+    """스킬 사용 검증 클래스 (템플릿 기반 코스트 인식)"""
 
     def __init__(
         self,
         matcher: TemplateMatcher,
         controller: GameController,
-        enable_ocr: bool = False
+        enable_cost_check: bool = True
     ):
         """
         Args:
             matcher: 템플릿 매칭 객체
             controller: 게임 컨트롤러 객체
-            enable_ocr: OCR 코스트 검증 활성화 여부
+            enable_cost_check: 코스트 검증 활성화 여부
         """
         self.matcher = matcher
         self.controller = controller
-        self.enable_ocr = enable_ocr
+        self.enable_cost_check = enable_cost_check
 
-        # OCR 리더 초기화 (enable_ocr=True일 때만)
-        self.ocr_reader = None
-        if self.enable_ocr:
+        # CostRecognizer 초기화
+        self.cost_recognizer = None
+        if self.enable_cost_check:
             try:
-                self.ocr_reader = OCRReader()
-                logger.info("OCR 코스트 검증 활성화됨")
+                self.cost_recognizer = CostRecognizer()
+                logger.info("템플릿 기반 코스트 인식 활성화됨")
             except Exception as e:
-                logger.warning(f"OCR 초기화 실패: {e}. 코스트 검증 비활성화됨")
-                self.enable_ocr = False
+                logger.warning(f"CostRecognizer 초기화 실패: {e}. 코스트 검증 비활성화됨")
+                self.enable_cost_check = False
 
     def verify_skill_usage(
         self,
@@ -237,7 +237,7 @@ class SkillChecker:
         return self.matcher.template_exists(skill_icon_template)
 
     # ========================================
-    # OCR 기반 코스트 검증
+    # 템플릿 기반 코스트 인식
     # ========================================
 
     def read_current_cost(
@@ -245,16 +245,16 @@ class SkillChecker:
         screenshot: Optional[Image.Image] = None
     ) -> Optional[int]:
         """
-        현재 코스트 값 읽기 (OCR)
+        현재 코스트 값 읽기 (템플릿 매칭)
 
         Args:
             screenshot: 화면 이미지 (None이면 자동 캡처)
 
         Returns:
-            코스트 값 또는 None (읽기 실패 시)
+            코스트 값 (2~5) 또는 None (읽기 실패 시)
         """
-        if not self.enable_ocr or not self.ocr_reader:
-            logger.warning("OCR이 비활성화되어 있습니다")
+        if not self.enable_cost_check or not self.cost_recognizer:
+            logger.warning("코스트 인식이 비활성화되어 있습니다")
             return None
 
         try:
@@ -262,16 +262,17 @@ class SkillChecker:
             if screenshot is None:
                 screenshot = self.controller.screenshot()
 
-            # 코스트 영역 추출 및 OCR
-            cost = self.ocr_reader.read_cost_value(
+            # 템플릿 매칭으로 코스트 인식
+            cost, confidence = self.cost_recognizer.recognize_cost_from_screenshot(
                 screenshot,
-                bbox=BATTLE_COST_VALUE_REGION
+                region=BATTLE_COST_VALUE_REGION,
+                confidence_threshold=0.6
             )
 
             if cost is not None:
-                logger.info(f"현재 코스트: {cost}")
+                logger.info(f"현재 코스트: {cost} (신뢰도: {confidence:.2f})")
             else:
-                logger.warning("코스트 읽기 실패")
+                logger.warning("코스트 인식 실패")
 
             return cost
 
@@ -315,8 +316,8 @@ class SkillChecker:
             "message": ""
         }
 
-        if not self.enable_ocr or not self.ocr_reader:
-            result["message"] = "OCR이 비활성화되어 있습니다"
+        if not self.enable_cost_check or not self.cost_recognizer:
+            result["message"] = "코스트 인식이 비활성화되어 있습니다"
             return result
 
         try:
@@ -412,7 +413,7 @@ class SkillChecker:
         cost_check = None
         before_screen = None
 
-        if self.enable_ocr:
+        if self.enable_cost_check:
             before_screen = self.controller.screenshot()
             current_cost = self.read_current_cost(before_screen)
 
@@ -439,7 +440,7 @@ class SkillChecker:
             return result
 
         # 3. 스킬 사용 후 코스트 검증
-        if self.enable_ocr:
+        if self.enable_cost_check:
             time.sleep(0.5)  # 코스트 UI 업데이트 대기
             after_screen = self.controller.screenshot()
 
@@ -462,7 +463,7 @@ class SkillChecker:
 
         # 4. 전체 성공
         result["success"] = True
-        if self.enable_ocr:
+        if self.enable_cost_check:
             result["message"] = (
                 f"[{student_name}] 스킬 사용 및 코스트 소모 확인 완료"
             )
@@ -475,7 +476,7 @@ class SkillChecker:
         return result
 
     # ========================================
-    # 스킬 버튼 직접 클릭 방식 (OCR 코스트 읽기)
+    # 스킬 버튼 직접 클릭 방식 (템플릿 기반 코스트 읽기)
     # ========================================
 
     def read_skill_cost_from_button(
@@ -484,17 +485,17 @@ class SkillChecker:
         screenshot: Optional[Image.Image] = None
     ) -> Optional[int]:
         """
-        스킬 버튼 하단의 코스트 값 읽기 (OCR)
+        스킬 버튼 하단의 코스트 값 읽기 (템플릿 매칭)
 
         Args:
             slot_index: 스킬 슬롯 인덱스 (0=슬롯1, 1=슬롯2, 2=슬롯3)
             screenshot: 화면 이미지 (None이면 자동 캡처)
 
         Returns:
-            코스트 값 또는 None (읽기 실패 시)
+            코스트 값 (2~5) 또는 None (읽기 실패 시)
         """
-        if not self.enable_ocr or not self.ocr_reader:
-            logger.warning("OCR이 비활성화되어 있습니다")
+        if not self.enable_cost_check or not self.cost_recognizer:
+            logger.warning("코스트 인식이 비활성화되어 있습니다")
             return None
 
         # 슬롯 인덱스 검증
@@ -508,16 +509,17 @@ class SkillChecker:
             if screenshot is None:
                 screenshot = self.controller.screenshot()
 
-            # 스킬 코스트 영역 OCR
-            skill_cost = self.ocr_reader.read_cost_value(
+            # 템플릿 매칭으로 스킬 코스트 인식
+            skill_cost, confidence = self.cost_recognizer.recognize_cost_from_screenshot(
                 screenshot,
-                bbox=cost_region
+                region=cost_region,
+                confidence_threshold=0.6
             )
 
             if skill_cost is not None:
-                logger.info(f"슬롯 {slot_index + 1} 스킬 코스트: {skill_cost}")
+                logger.info(f"슬롯 {slot_index + 1} 스킬 코스트: {skill_cost} (신뢰도: {confidence:.2f})")
             else:
-                logger.warning(f"슬롯 {slot_index + 1} 스킬 코스트 읽기 실패")
+                logger.warning(f"슬롯 {slot_index + 1} 스킬 코스트 인식 실패")
 
             return skill_cost
 
@@ -576,9 +578,9 @@ class SkillChecker:
 
         logger.info(f"[{student_name}] 슬롯 {slot_index + 1} 스킬 사용 시작")
 
-        # OCR 필수 체크
-        if not self.enable_ocr or not self.ocr_reader:
-            result["message"] = "OCR이 비활성화되어 있습니다"
+        # 코스트 인식 필수 체크
+        if not self.enable_cost_check or not self.cost_recognizer:
+            result["message"] = "코스트 인식이 비활성화되어 있습니다"
             logger.error(result["message"])
             return result
 
