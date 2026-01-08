@@ -62,11 +62,11 @@ def test_start_to_formation():
     print("테스트 시작")
     print("="*60)
     print("\n게임 화면에서 시작 발판이 보이는지 확인하세요.")
-    print("10초 후 테스트를 시작합니다...\n")
+    print("3초 후 테스트를 시작합니다...\n")
 
     # 카운트다운
     import time
-    for i in range(5, 0, -1):
+    for i in range(3, 0, -1):
         print(f"{i}초 남음...")
         time.sleep(1)
 
@@ -93,7 +93,7 @@ def test_start_to_formation():
     logger.save_screenshot(screenshot, "start_tile_found")
 
     print("\n[2단계] 시작 발판 클릭...")
-    print("3초 후 클릭합니다...")
+    print("2초 후 클릭합니다...")
 
     for i in range(2, 0, -1):
         print(f"{i}...")

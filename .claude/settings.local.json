@@ -35,7 +35,8 @@
       "Bash(findstr:*)",
       "Bash(exit 0)",
       "Bash(C:Userslhb02AppDataLocalProgramsPythonPython310python.exe -m pip install opencv-python)",
-      "Bash(\"C:\\Users\\lhb02\\AppData\\Local\\Programs\\Python\\Python310\\python.exe\" -m pip install opencv-python)"
+      "Bash(\"C:\\Users\\lhb02\\AppData\\Local\\Programs\\Python\\Python310\\python.exe\" -m pip install opencv-python)",
+      "Bash(git merge:*)"
     ],
     "deny": [],
     "ask": []
