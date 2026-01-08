@@ -30,7 +30,7 @@ class CostRecognizer:
         Args:
             template_dir: 코스트 템플릿 디렉토리 (None이면 기본 경로 사용)
         """
-        self.template_dir = template_dir or (UI_DIR / ".." / "2560x1440" / "ui")
+        self.template_dir = template_dir or UI_DIR
         self.templates = self._load_templates()
 
         if not self.templates:
