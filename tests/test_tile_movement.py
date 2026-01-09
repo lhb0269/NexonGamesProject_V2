@@ -37,6 +37,7 @@ def test_tile_movement():
     empty_tile = ICONS_DIR / "empty_tile.png"
     phase_end_button = BUTTONS_DIR / "phase_end_button.png"
     character_marker = ICONS_DIR / "character_marker.png"
+    character_marker_mask = ICONS_DIR / "character_marker_mask.png"
 
     print("\n[템플릿 확인]")
     if not enemy_tile.exists():
@@ -62,6 +63,15 @@ def test_tile_movement():
         return False
     else:
         print(f"✓ 캐릭터 마커 이미지 존재: {character_marker}")
+
+    # 마스크 파일 확인 (선택 사항)
+    use_mask = character_marker_mask.exists()
+    if use_mask:
+        print(f"✓ 캐릭터 마커 마스크 존재: {character_marker_mask}")
+        print("  → 마스크 기반 템플릿 매칭 사용")
+    else:
+        print(f"⚠ 캐릭터 마커 마스크 없음: {character_marker_mask}")
+        print("  → 일반 템플릿 매칭 사용 (배경 변화 시 인식 실패 가능)")
 
     print("\n[다중 조건 전투 검증]")
     print("전투 진입은 BattleChecker의 다중 조건 검증을 사용합니다:")
@@ -121,7 +131,12 @@ def test_tile_movement():
 
     # 캐릭터 마커 초기 위치 확인
     print(f"\n[1.5단계] 캐릭터 마커 초기 위치 확인...")
-    initial_marker_pos = matcher.find_template(character_marker)
+
+    # 마스크가 있으면 마스크 기반 매칭, 없으면 일반 매칭
+    if use_mask:
+        initial_marker_pos = matcher.find_template_with_mask(character_marker, character_marker_mask)
+    else:
+        initial_marker_pos = matcher.find_template(character_marker)
 
     if not initial_marker_pos:
         print("⚠ 캐릭터 마커를 찾을 수 없습니다. 위치 변경 검증을 건너뜁니다.")
@@ -166,8 +181,11 @@ def test_tile_movement():
             print("이동 애니메이션 대기 (3초)...")
             time.sleep(3)  # 이동 애니메이션 대기
 
-            # 새로운 마커 위치 찾기
-            final_marker_pos = matcher.find_template(character_marker)
+            # 새로운 마커 위치 찾기 (마스크 사용)
+            if use_mask:
+                final_marker_pos = matcher.find_template_with_mask(character_marker, character_marker_mask)
+            else:
+                final_marker_pos = matcher.find_template(character_marker)
 
             if not final_marker_pos:
                 print("⚠ 이동 후 캐릭터 마커를 찾을 수 없습니다.")
