@@ -208,10 +208,20 @@ def main():
         print("✗ 경로가 입력되지 않았습니다")
         return
 
-    template_path = Path(template_input)
+    # 따옴표 제거 (복사-붙여넣기 시 따옴표가 포함될 수 있음)
+    template_input = template_input.strip('"').strip("'")
+
+    # 경로 객체 생성 및 절대 경로로 변환
+    template_path = Path(template_input).resolve()
+
+    print(f"\n입력된 경로: {template_path}")
+    print(f"절대 경로: {template_path.absolute()}")
+    print(f"파일 존재 여부: {template_path.exists()}")
 
     if not template_path.exists():
         print(f"✗ 파일이 존재하지 않습니다: {template_path}")
+        # 현재 작업 디렉토리 출력
+        print(f"현재 작업 디렉토리: {Path.cwd()}")
         return
 
     # 마스크 생성
