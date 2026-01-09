@@ -36,6 +36,7 @@ def test_tile_movement():
     enemy_tile = ICONS_DIR / "enemy_tile.png"
     empty_tile = ICONS_DIR / "empty_tile.png"
     phase_end_button = BUTTONS_DIR / "phase_end_button.png"
+    character_marker = ICONS_DIR / "character_marker.png"
 
     print("\n[템플릿 확인]")
     if not enemy_tile.exists():
@@ -55,6 +56,12 @@ def test_tile_movement():
         return False
     else:
         print(f"✓ Phase 종료 버튼 이미지 존재: {phase_end_button}")
+
+    if not character_marker.exists():
+        print(f"✗ 캐릭터 마커 이미지 없음: {character_marker}")
+        return False
+    else:
+        print(f"✓ 캐릭터 마커 이미지 존재: {character_marker}")
 
     print("\n[다중 조건 전투 검증]")
     print("전투 진입은 BattleChecker의 다중 조건 검증을 사용합니다:")
@@ -112,6 +119,24 @@ def test_tile_movement():
     screenshot = controller.screenshot()
     logger.save_screenshot(screenshot, "tile_found")
 
+    # 캐릭터 마커 초기 위치 확인
+    print(f"\n[1.5단계] 캐릭터 마커 초기 위치 확인...")
+    initial_marker_pos = matcher.find_template(character_marker)
+
+    if not initial_marker_pos:
+        print("⚠ 캐릭터 마커를 찾을 수 없습니다. 위치 변경 검증을 건너뜁니다.")
+        logger.log_check("캐릭터_마커_초기_위치", False, "마커 미발견")
+        initial_marker_pos = None
+    else:
+        initial_x = initial_marker_pos[0] + initial_marker_pos[2] // 2
+        initial_y = initial_marker_pos[1] + initial_marker_pos[3] // 2
+        print(f"✓ 캐릭터 마커 초기 위치: ({initial_x}, {initial_y})")
+        logger.log_check("캐릭터_마커_초기_위치", True, f"위치: ({initial_x}, {initial_y})")
+
+        # 스크린샷
+        screenshot = controller.screenshot()
+        logger.save_screenshot(screenshot, "marker_initial_position")
+
     print(f"\n[2단계] 발판 클릭 {'(적 있음 - 전투 예상)' if has_enemy else '(빈 발판 - 이동만)'}...")
     print("3초 후 클릭합니다...")
 
@@ -134,6 +159,42 @@ def test_tile_movement():
         # 스크린샷
         screenshot = controller.screenshot()
         logger.save_screenshot(screenshot, "after_tile_click")
+
+        # 캐릭터 이동 확인 (마커 위치 변경 검증)
+        if initial_marker_pos is not None:
+            print("\n[2.5단계] 캐릭터 이동 확인 중...")
+            print("이동 애니메이션 대기 (3초)...")
+            time.sleep(3)  # 이동 애니메이션 대기
+
+            # 새로운 마커 위치 찾기
+            final_marker_pos = matcher.find_template(character_marker)
+
+            if not final_marker_pos:
+                print("⚠ 이동 후 캐릭터 마커를 찾을 수 없습니다.")
+                logger.log_check("캐릭터_이동_확인", False, "이동 후 마커 미발견")
+            else:
+                final_x = final_marker_pos[0] + final_marker_pos[2] // 2
+                final_y = final_marker_pos[1] + final_marker_pos[3] // 2
+                print(f"✓ 캐릭터 마커 이동 후 위치: ({final_x}, {final_y})")
+
+                # 이동 거리 계산
+                initial_x = initial_marker_pos[0] + initial_marker_pos[2] // 2
+                initial_y = initial_marker_pos[1] + initial_marker_pos[3] // 2
+                distance_moved = ((final_x - initial_x) ** 2 + (final_y - initial_y) ** 2) ** 0.5
+
+                print(f"이동 거리: {distance_moved:.2f} 픽셀")
+
+                # 스크린샷
+                screenshot = controller.screenshot()
+                logger.save_screenshot(screenshot, "marker_final_position")
+
+                # 이동 여부 판단 (최소 10픽셀 이상 이동)
+                if distance_moved >= 10:
+                    print(f"✓ 캐릭터 이동 확인 성공! (거리: {distance_moved:.2f}px)")
+                    logger.log_check("캐릭터_이동_확인", True, f"이동 거리: {distance_moved:.2f}px, 시작: ({initial_x}, {initial_y}), 종료: ({final_x}, {final_y})")
+                else:
+                    print(f"✗ 캐릭터가 이동하지 않은 것으로 보입니다 (거리: {distance_moved:.2f}px)")
+                    logger.log_check("캐릭터_이동_확인", False, f"이동 거리 부족: {distance_moved:.2f}px")
 
     except Exception as e:
         print(f"✗ 클릭 중 오류: {e}")
