@@ -65,13 +65,13 @@ def test_tile_movement():
         print(f"✓ 캐릭터 마커 이미지 존재: {character_marker}")
 
     # 마스크 파일 확인 (선택 사항)
-    use_mask = character_marker_mask.exists()
-    if use_mask:
+    use_mask_file = character_marker_mask.exists()
+    if use_mask_file:
         print(f"✓ 캐릭터 마커 마스크 존재: {character_marker_mask}")
-        print("  → 마스크 기반 템플릿 매칭 사용")
+        print("  → 외부 마스크 파일 사용")
     else:
         print(f"⚠ 캐릭터 마커 마스크 없음: {character_marker_mask}")
-        print("  → 일반 템플릿 매칭 사용 (배경 변화 시 인식 실패 가능)")
+        print("  → 템플릿 알파 채널 또는 일반 템플릿 매칭 사용")
 
     print("\n[다중 조건 전투 검증]")
     print("전투 진입은 BattleChecker의 다중 조건 검증을 사용합니다:")
@@ -132,11 +132,13 @@ def test_tile_movement():
     # 캐릭터 마커 초기 위치 확인
     print(f"\n[1.5단계] 캐릭터 마커 초기 위치 확인...")
 
-    # 마스크가 있으면 마스크 기반 매칭, 없으면 일반 매칭
-    if use_mask:
+    # 마스크 파일이 있으면 사용, 없으면 알파 채널 또는 일반 매칭
+    # find_template_with_mask()는 자동으로 알파 채널을 마스크로 사용함
+    if use_mask_file:
         initial_marker_pos = matcher.find_template_with_mask(character_marker, character_marker_mask)
     else:
-        initial_marker_pos = matcher.find_template(character_marker)
+        # 투명 PNG의 경우 알파 채널을 자동으로 마스크로 사용
+        initial_marker_pos = matcher.find_template_with_mask(character_marker)
 
     if not initial_marker_pos:
         print("⚠ 캐릭터 마커를 찾을 수 없습니다. 위치 변경 검증을 건너뜁니다.")
@@ -181,11 +183,12 @@ def test_tile_movement():
             print("이동 애니메이션 대기 (3초)...")
             time.sleep(3)  # 이동 애니메이션 대기
 
-            # 새로운 마커 위치 찾기 (마스크 사용)
-            if use_mask:
+            # 새로운 마커 위치 찾기 (마스크 파일 또는 알파 채널 사용)
+            if use_mask_file:
                 final_marker_pos = matcher.find_template_with_mask(character_marker, character_marker_mask)
             else:
-                final_marker_pos = matcher.find_template(character_marker)
+                # 투명 PNG의 경우 알파 채널을 자동으로 마스크로 사용
+                final_marker_pos = matcher.find_template_with_mask(character_marker)
 
             if not final_marker_pos:
                 print("⚠ 이동 후 캐릭터 마커를 찾을 수 없습니다.")
