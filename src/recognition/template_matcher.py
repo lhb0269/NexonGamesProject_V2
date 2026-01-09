@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 import logging
 from PIL import Image
 import tempfile
+import numpy as np
 
 from config.settings import (
     TEMPLATE_MATCHING_CONFIDENCE,
@@ -16,6 +17,14 @@ from config.settings import (
 )
 
 logger = logging.getLogger(__name__)
+
+# OpenCV 사용 가능 여부 확인
+try:
+    import cv2
+    OPENCV_AVAILABLE = True
+except ImportError:
+    OPENCV_AVAILABLE = False
+    logger.warning("OpenCV를 사용할 수 없습니다. 마스크 기반 템플릿 매칭이 제한됩니다.")
 
 
 class TemplateMatcher:
@@ -297,3 +306,109 @@ class TemplateMatcher:
         """
         location = self.find_template(template_path, region, grayscale)
         return location is not None
+
+    def find_template_with_mask(
+        self,
+        template_path: Path | str,
+        mask_path: Optional[Path | str] = None,
+        region: Optional[Tuple[int, int, int, int]] = None,
+        threshold: Optional[float] = None
+    ) -> Optional[Tuple[int, int, int, int]]:
+        """
+        마스크를 사용한 템플릿 매칭 (OpenCV 필요)
+
+        마스크는 흰색(255) 영역만 매칭에 사용되고, 검은색(0) 영역은 무시됩니다.
+        중앙이 비어있는 캐릭터 마커처럼 배경이 변하는 템플릿에 유용합니다.
+
+        Args:
+            template_path: 템플릿 이미지 경로
+            mask_path: 마스크 이미지 경로 (흰색=매칭, 검은색=무시)
+                       None이면 템플릿의 알파 채널을 마스크로 사용
+            region: 검색할 화면 영역 (left, top, width, height)
+            threshold: 매칭 임계값 (0.0 ~ 1.0). None이면 self.confidence 사용
+
+        Returns:
+            찾은 위치 (left, top, width, height) 또는 None
+        """
+        if not OPENCV_AVAILABLE:
+            logger.error("OpenCV가 설치되지 않아 마스크 기반 매칭을 사용할 수 없습니다.")
+            return None
+
+        template_path = Path(template_path)
+
+        if not template_path.exists():
+            logger.error(f"템플릿 파일이 존재하지 않습니다: {template_path}")
+            return None
+
+        threshold = threshold or self.confidence
+
+        try:
+            # 화면 캡처
+            screenshot = pyautogui.screenshot(region=region)
+            screenshot_np = np.array(screenshot)
+            screenshot_cv = cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)
+
+            # 템플릿 로드 (알파 채널 포함)
+            template_with_alpha = cv2.imread(str(template_path), cv2.IMREAD_UNCHANGED)
+
+            if template_with_alpha is None:
+                logger.error(f"템플릿 이미지를 로드할 수 없습니다: {template_path}")
+                return None
+
+            # 마스크 처리
+            mask = None
+            if mask_path is not None:
+                # 명시적으로 마스크 파일이 제공된 경우
+                mask_path = Path(mask_path)
+                if not mask_path.exists():
+                    logger.error(f"마스크 파일이 존재하지 않습니다: {mask_path}")
+                    return None
+                mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+                if mask is None:
+                    logger.error(f"마스크 이미지를 로드할 수 없습니다: {mask_path}")
+                    return None
+                logger.debug(f"외부 마스크 파일 사용: {mask_path.name}")
+            elif template_with_alpha.shape[2] == 4:
+                # 템플릿에 알파 채널이 있는 경우 (투명 PNG)
+                # 알파 채널을 마스크로 사용
+                mask = template_with_alpha[:, :, 3]
+                logger.debug("템플릿의 알파 채널을 마스크로 사용")
+            else:
+                # 마스크 없음
+                logger.warning("마스크가 제공되지 않았고 템플릿에 알파 채널도 없습니다. 일반 매칭으로 진행합니다.")
+
+            # 템플릿을 BGR로 변환 (알파 채널 제거)
+            if template_with_alpha.shape[2] == 4:
+                template = cv2.cvtColor(template_with_alpha, cv2.COLOR_BGRA2BGR)
+            else:
+                template = template_with_alpha
+
+            # 템플릿 매칭 (TM_CCORR_NORMED 방식, 마스크 지원)
+            result = cv2.matchTemplate(screenshot_cv, template, cv2.TM_CCORR_NORMED, mask=mask)
+
+            # 최대값 위치 찾기
+            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+            # 임계값 확인
+            if max_val >= threshold:
+                # 템플릿 크기
+                h, w = template.shape[:2]
+
+                # region이 지정되어 있으면 절대 좌표로 변환
+                if region:
+                    left = region[0] + max_loc[0]
+                    top = region[1] + max_loc[1]
+                else:
+                    left = max_loc[0]
+                    top = max_loc[1]
+
+                location = (left, top, w, h)
+                logger.info(f"마스크 기반 템플릿 발견: {template_path.name} at {location} (신뢰도: {max_val:.3f})")
+                return location
+            else:
+                logger.debug(f"마스크 기반 템플릿 매칭 실패: {template_path.name} (최고 신뢰도: {max_val:.3f} < {threshold:.3f})")
+                return None
+
+        except Exception as e:
+            logger.error(f"마스크 기반 템플릿 매칭 중 오류 발생: {e}")
+            return None
