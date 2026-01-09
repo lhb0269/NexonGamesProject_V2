@@ -63,8 +63,8 @@ def test_tile_movement():
     print("  - pause_button.png")
     print("  (3개 중 2개 이상 인식 시 전투 진입으로 판단)")
 
-    # 낮은 신뢰도로 매처 생성 (0.5)
-    matcher = TemplateMatcher(confidence=0.5)
+    # 낮은 신뢰도로 매처 생성 (0.6)
+    matcher = TemplateMatcher(confidence=0.6)
     controller = GameController()
     battle_checker = BattleChecker(matcher, controller)
     logger = TestLogger("tile_movement_test")
