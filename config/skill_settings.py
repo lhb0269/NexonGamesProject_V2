@@ -24,23 +24,11 @@ SKILL_BUTTON_SLOT_2 = (2000, 1240)
 # 슬롯 3 버튼 중심점
 SKILL_BUTTON_SLOT_3 = (2200, 1240)
 
-# 슬롯 4 버튼 중심점 (추정치 - 실측 필요)
-SKILL_BUTTON_SLOT_4 = (1797, 1242)
-
-# 슬롯 5 버튼 중심점 (추정치 - 실측 필요)
-SKILL_BUTTON_SLOT_5 = (2000, 1240)
-
-# 슬롯 6 버튼 중심점 (추정치 - 실측 필요)
-SKILL_BUTTON_SLOT_6 = (2200, 1240)
-
 # 슬롯 매핑 딕셔너리 (0-based index)
 SKILL_BUTTON_SLOTS = {
     0: SKILL_BUTTON_SLOT_1,
     1: SKILL_BUTTON_SLOT_2,
     2: SKILL_BUTTON_SLOT_3,
-    3: SKILL_BUTTON_SLOT_4,
-    4: SKILL_BUTTON_SLOT_5,
-    5: SKILL_BUTTON_SLOT_6,
 }
 
 
@@ -72,7 +60,7 @@ TARGET_CLICK_TO_COST_UPDATE_WAIT = 1.0
 SKILL_USE_DRAG_DURATION = 0.5
 
 # 스킬 사용 후 UI 업데이트 대기 (버튼 교체 완료까지)
-SKILL_UI_UPDATE_WAIT = 2.0
+SKILL_UI_UPDATE_WAIT = 0.2
 
 
 # ========================================
