@@ -129,19 +129,11 @@ class TestRunnerGUI:
             },
             {
                 "id": "TC-003",
-                "name": "단계 3: 발판 이동",
+                "name": "단계 3: 발판 이동 및 전투 진입",
                 "description": "적 발판/빈 발판 클릭 및 이동 테스트",
                 "module": "tests.test_tile_movement",
                 "color": "#FF9800",
-                "dependencies": ["tests.test_partial_stage"]  # TC-002 필요
-            },
-            {
-                "id": "TC-005",
-                "name": "스킬 사용 시스템 테스트",
-                "description": "스킬 사용 및 코스트 소모 검증 (단일/다중 스킬)",
-                "module": "tests.test_skill_usage",
-                "color": "#673AB7",
-                "dependencies": []  # 전투 진입은 수동으로 필요 (자동 의존성 아님)
+                "dependencies": []  # TC-002 필요
             },
             {
                 "id": "TC-006",
@@ -149,16 +141,8 @@ class TestRunnerGUI:
                 "description": "Victory → 통계 → 데미지 기록 → 랭크 획득",
                 "module": "tests.test_battle_result",
                 "color": "#9C27B0",
-                "dependencies": []  # 전투 종료는 수동으로 필요
+                "dependencies": ["tests.test_tile_movement"]  # 전투 진입 해야함
             },
-            {
-                "id": "TC-007",
-                "name": "전체 플로우 실행",
-                "description": "Normal 1-4 전체 자동 플레이 (단계 1-6)",
-                "module": "tests.test_full_stage",
-                "color": "#F44336",
-                "dependencies": []  # 전체 플로우는 독립 실행
-            }
         ]
 
         self.test_items = tests

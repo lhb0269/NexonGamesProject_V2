@@ -62,13 +62,10 @@ def test_start_to_formation():
     print("테스트 시작")
     print("="*60)
     print("\n게임 화면에서 시작 발판이 보이는지 확인하세요.")
-    print("3초 후 테스트를 시작합니다...\n")
+    print("1초 후 테스트를 시작합니다...\n")
 
-    # 카운트다운
     import time
-    for i in range(3, 0, -1):
-        print(f"{i}초 남음...")
-        time.sleep(1)
+    time.sleep(1)
 
     print("\n[1단계] 시작 발판 찾기...")
 
@@ -339,7 +336,7 @@ def main():
     print("="*60)
 
     import time
-    time.sleep(2)  # 잠시 대기
+    time.sleep(1)  # 잠시 대기
 
     # 2단계: 출격 → 스테이지 맵
     success2 = test_deploy_to_map(logger)
