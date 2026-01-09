@@ -163,7 +163,7 @@ def test_tile_movement():
 
     # 발판 클릭
     try:
-        clicked = controller.click_template(tile_to_click, wait_after=2.0)
+        clicked = controller.click_template(tile_to_click, wait_after=0.5)
         if not clicked:
             print("✗ 발판 클릭 실패")
             logger.log_check("발판_클릭", False, "클릭 실패")
@@ -180,8 +180,8 @@ def test_tile_movement():
         # 캐릭터 이동 확인 (마커 위치 변경 검증)
         if initial_marker_pos is not None:
             print("\n[2.5단계] 캐릭터 이동 확인 중...")
-            print("이동 애니메이션 대기 (3초)...")
-            time.sleep(3)  # 이동 애니메이션 대기
+            #print("이동 애니메이션 대기 (3초)...")
+            #time.sleep(3)  # 이동 애니메이션 대기
 
             # 새로운 마커 위치 찾기 (마스크 파일 또는 알파 채널 사용)
             if use_mask_file:
