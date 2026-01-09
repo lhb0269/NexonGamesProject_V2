@@ -310,7 +310,7 @@ class TemplateMatcher:
     def find_template_with_mask(
         self,
         template_path: Path | str,
-        mask_path: Path | str,
+        mask_path: Optional[Path | str] = None,
         region: Optional[Tuple[int, int, int, int]] = None,
         threshold: Optional[float] = None
     ) -> Optional[Tuple[int, int, int, int]]:
@@ -323,6 +323,7 @@ class TemplateMatcher:
         Args:
             template_path: 템플릿 이미지 경로
             mask_path: 마스크 이미지 경로 (흰색=매칭, 검은색=무시)
+                       None이면 템플릿의 알파 채널을 마스크로 사용
             region: 검색할 화면 영역 (left, top, width, height)
             threshold: 매칭 임계값 (0.0 ~ 1.0). None이면 self.confidence 사용
 
@@ -334,14 +335,9 @@ class TemplateMatcher:
             return None
 
         template_path = Path(template_path)
-        mask_path = Path(mask_path)
 
         if not template_path.exists():
             logger.error(f"템플릿 파일이 존재하지 않습니다: {template_path}")
-            return None
-
-        if not mask_path.exists():
-            logger.error(f"마스크 파일이 존재하지 않습니다: {mask_path}")
             return None
 
         threshold = threshold or self.confidence
@@ -352,17 +348,40 @@ class TemplateMatcher:
             screenshot_np = np.array(screenshot)
             screenshot_cv = cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)
 
-            # 템플릿과 마스크 로드
-            template = cv2.imread(str(template_path))
-            mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+            # 템플릿 로드 (알파 채널 포함)
+            template_with_alpha = cv2.imread(str(template_path), cv2.IMREAD_UNCHANGED)
 
-            if template is None:
+            if template_with_alpha is None:
                 logger.error(f"템플릿 이미지를 로드할 수 없습니다: {template_path}")
                 return None
 
-            if mask is None:
-                logger.error(f"마스크 이미지를 로드할 수 없습니다: {mask_path}")
-                return None
+            # 마스크 처리
+            mask = None
+            if mask_path is not None:
+                # 명시적으로 마스크 파일이 제공된 경우
+                mask_path = Path(mask_path)
+                if not mask_path.exists():
+                    logger.error(f"마스크 파일이 존재하지 않습니다: {mask_path}")
+                    return None
+                mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+                if mask is None:
+                    logger.error(f"마스크 이미지를 로드할 수 없습니다: {mask_path}")
+                    return None
+                logger.debug(f"외부 마스크 파일 사용: {mask_path.name}")
+            elif template_with_alpha.shape[2] == 4:
+                # 템플릿에 알파 채널이 있는 경우 (투명 PNG)
+                # 알파 채널을 마스크로 사용
+                mask = template_with_alpha[:, :, 3]
+                logger.debug("템플릿의 알파 채널을 마스크로 사용")
+            else:
+                # 마스크 없음
+                logger.warning("마스크가 제공되지 않았고 템플릿에 알파 채널도 없습니다. 일반 매칭으로 진행합니다.")
+
+            # 템플릿을 BGR로 변환 (알파 채널 제거)
+            if template_with_alpha.shape[2] == 4:
+                template = cv2.cvtColor(template_with_alpha, cv2.COLOR_BGRA2BGR)
+            else:
+                template = template_with_alpha
 
             # 템플릿 매칭 (TM_CCORR_NORMED 방식, 마스크 지원)
             result = cv2.matchTemplate(screenshot_cv, template, cv2.TM_CCORR_NORMED, mask=mask)
