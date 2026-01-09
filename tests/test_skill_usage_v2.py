@@ -97,7 +97,7 @@ def find_student_in_slot(matcher: TemplateMatcher, slot_index: int) -> dict:
     # 6개 학생 템플릿을 모두 검색
     for student_index in range(6):
         template_name = SKILL_TEMPLATES[student_index]
-        template_path = f"assets/templates/2560x1440/buttons/{template_name}"
+        template_path = project_root / "assets" / "templates" / "2560x1440" / "buttons" / template_name
 
         try:
             # 슬롯 근처에서 템플릿 탐색 (region 제한)
@@ -158,7 +158,7 @@ def check_student_disappeared(matcher: TemplateMatcher, slot_index: int,
 
     slot_position = SKILL_BUTTON_SLOTS[slot_index]
     template_name = SKILL_TEMPLATES[student_index]
-    template_path = f"assets/templates/2560x1440/buttons/{template_name}"
+    template_path = project_root / "assets" / "templates" / "2560x1440" / "buttons" / template_name
 
     try:
         region = (
