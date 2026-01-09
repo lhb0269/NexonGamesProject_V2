@@ -136,12 +136,20 @@ class TestRunnerGUI:
                 "dependencies": []  # TC-002 필요
             },
             {
+                "id": "TC-004",
+                "name": "단계 4: 학생 별 스킬 확인",
+                "description": "학생 별 ex 스킬 사용 확인",
+                "module": "tests.test_skill_usage_v2",
+                "color": "#00FDB1",
+                "dependencies": []  # TC-003 필요
+            },
+            {
                 "id": "TC-006",
                 "name": "단계 6: 전투 결과 확인",
                 "description": "Victory → 통계 → 데미지 기록 → 랭크 획득",
                 "module": "tests.test_battle_result",
                 "color": "#9C27B0",
-                "dependencies": ["tests.test_tile_movement"]  # 전투 진입 해야함
+                "dependencies": []  # 전투 진입 해야함
             },
         ]
 
