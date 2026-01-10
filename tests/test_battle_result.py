@@ -382,34 +382,34 @@ def test_battle_result_flow():
         logger.finalize()
         return False
 
-    # # [5단계] 데미지 기록 창 확인 버튼 클릭
-    # matcher = TemplateMatcher(confidence=0.5)
-    # if not click_damage_report_confirm(matcher, controller, logger):
-    #     logger.finalize()
-    #     return False
+    # [5단계] 데미지 기록 창 확인 버튼 클릭
+    matcher = TemplateMatcher(confidence=0.5)
+    if not click_damage_report_confirm(matcher, controller, logger):
+        logger.finalize()
+        return False
 
-    # # [6단계] 전투 결과 확인 버튼 클릭
-    # matcher = TemplateMatcher(confidence=0.7)
-    # if not click_victory_confirm(matcher, controller, logger):
-    #     logger.finalize()
-    #     return False
+    # [6단계] 전투 결과 확인 버튼 클릭
+    matcher = TemplateMatcher(confidence=0.7)
+    if not click_victory_confirm(matcher, controller, logger):
+        logger.finalize()
+        return False
 
-    # # [7단계] 랭크 획득 창 확인
-    # if not verify_rank_reward(matcher, controller, logger):
-    #     logger.finalize()
-    #     return False
+    # [7단계] 랭크 획득 창 확인
+    if not verify_rank_reward(matcher, controller, logger):
+        logger.finalize()
+        return False
 
-    # # [8단계] 랭크 획득 창 확인 버튼 클릭
-    # if not click_rank_reward_confirm(matcher, controller, logger):
-    #     logger.finalize()
-    #     return False
+    # [8단계] 랭크 획득 창 확인 버튼 클릭
+    if not click_rank_reward_confirm(matcher, controller, logger):
+        logger.finalize()
+        return False
 
-    # # [9단계] 스테이지 화면 복귀 확인
-    # result = verify_stage_return(matcher, controller, logger)
+    # [9단계] 스테이지 화면 복귀 확인
+    result = verify_stage_return(matcher, controller, logger)
 
     result_file = logger.finalize()
     print(f"\n결과 파일: {result_file}")
-    #return result
+    return result
 
 
 def main():
