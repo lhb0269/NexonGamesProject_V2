@@ -25,7 +25,9 @@
    ↓
 [3단계] MISSION COMPLETE 화면 확인
    ↓
-[4단계] 보상 아이템 UI 확인
+[4단계] MISSION COMPLETE 확인 버튼 클릭 (+ 5초 대기)
+   ↓
+[5단계] 보상 아이템 UI 확인
    ├─ 크레딧 아이콘
    └─ 활동 보고서 아이콘
    ↓
@@ -46,6 +48,7 @@
 | 템플릿 파일명 | 설명 | 상태 |
 |--------------|------|------|
 | `victory_confirm.png` | Victory 확인 버튼 | ✅ 존재 |
+| `reward_confirm.png` | MISSION COMPLETE 확인 버튼 | ⚠️ **필요** |
 
 ### 3. 아이콘 템플릿 (assets/templates/2560x1440/icons/)
 
@@ -57,9 +60,14 @@
 ## 템플릿 캡처 가이드
 
 ### mission_complete.png
-- **위치**: Victory 확인 버튼 클릭 후 나타나는 보상 화면
-- **캡처 대상**: "MISSION COMPLETE" 텍스트 또는 보상 획득 타이틀 영역
+- **위치**: Victory 확인 버튼 클릭 후 나타나는 MISSION COMPLETE 화면
+- **캡처 대상**: "MISSION COMPLETE" 텍스트 또는 타이틀 영역
 - **권장 크기**: 화면 상단 중앙의 타이틀 영역만 캡처 (전체 화면 X)
+
+### reward_confirm.png
+- **위치**: MISSION COMPLETE 화면 하단 확인 버튼
+- **캡처 대상**: 확인 버튼 전체 (텍스트 포함)
+- **권장 크기**: 버튼 크기만큼 (배경 최소화)
 
 ### credit_icon.png
 - **위치**: 보상 화면에서 크레딧을 표시하는 아이콘
@@ -98,7 +106,8 @@ python gui_test_runner.py
 1. ✅ Victory 화면이 정상적으로 표시됨
 2. ✅ Victory 확인 버튼 클릭 성공
 3. ✅ MISSION COMPLETE 화면이 정상적으로 표시됨
-4. ✅ 최소 1개 이상의 보상 아이템 아이콘이 화면에 표시됨
+4. ✅ MISSION COMPLETE 확인 버튼 클릭 성공
+5. ✅ 최소 1개 이상의 보상 아이템 아이콘이 화면에 표시됨
 
 ## 실패 조건
 
@@ -107,7 +116,8 @@ python gui_test_runner.py
 1. ❌ Victory 화면을 찾을 수 없음
 2. ❌ Victory 확인 버튼을 찾거나 클릭할 수 없음
 3. ❌ MISSION COMPLETE 화면이 10초 내에 나타나지 않음
-4. ❌ 보상 아이템 아이콘을 하나도 찾을 수 없음
+4. ❌ MISSION COMPLETE 확인 버튼을 찾거나 클릭할 수 없음
+5. ❌ 보상 아이템 아이콘을 하나도 찾을 수 없음
 
 ## 구현 제약사항
 
@@ -152,10 +162,11 @@ logs/reward_ui_verification_YYYYMMDD_HHMMSS/
 
 ## 예상 실행 시간
 
-- 정상 케이스: **약 15-20초**
+- 정상 케이스: **약 20-25초**
   - Victory 화면 확인: 1초
-  - 버튼 클릭 및 대기: 4초
+  - Victory 버튼 클릭 및 대기: 4초
   - MISSION COMPLETE 대기: 최대 10초
+  - MISSION COMPLETE 버튼 클릭 및 대기: 6초
   - 보상 아이템 확인: 2초
 
 ## 주의사항

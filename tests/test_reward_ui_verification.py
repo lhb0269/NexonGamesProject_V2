@@ -6,13 +6,16 @@
 - 실제 인벤토리 반영 여부는 테스트 범위에서 제외
 
 테스트 시나리오:
-1. MISSION COMPLETE 또는 보상 획득 화면 노출 확인
-2. 보상 아이템 카드 UI 존재 여부 확인
+1. Victory 화면 확인
+2. Victory 확인 버튼 클릭
+3. MISSION COMPLETE 화면 확인
+4. MISSION COMPLETE 확인 버튼 클릭 (+ 5초 대기)
+5. 보상 아이템 UI 확인
    - 크레딧 아이콘
    - 활동 보고서 아이콘
-   - 기타 보상 아이콘
-3. 각 아이템은 아이콘 UI 존재 여부만 확인 (OCR 미사용)
-4. 모든 조건 만족 시 PASS 판정
+
+각 아이템은 아이콘 UI 존재 여부만 확인 (OCR 미사용)
+모든 조건 만족 시 PASS 판정
 
 제약사항:
 - Live 빌드 환경
@@ -51,6 +54,7 @@ def check_templates():
     templates = {
         "Victory 확인 버튼": BUTTONS_DIR / "victory_confirm.png",
         "보상 획득 화면": UI_DIR / "mission_complete.png",
+        "보상 획득 확인 버튼": BUTTONS_DIR / "reward_confirm.png",
         "크레딧 아이콘": ICONS_DIR / "credit_icon.png",
         "활동 보고서 아이콘": ICONS_DIR / "activity_report_icon.png",
     }
@@ -268,9 +272,91 @@ def verify_mission_complete_screen(matcher: TemplateMatcher, controller: GameCon
         return False
 
 
+def click_reward_confirm(matcher: TemplateMatcher, controller: GameController, logger: TestLogger) -> bool:
+    """
+    4단계: MISSION COMPLETE 확인 버튼 클릭
+
+    Returns:
+        True: 클릭 성공
+        False: 클릭 실패
+    """
+    print("\n" + "="*70)
+    print("[4단계] MISSION COMPLETE 확인 버튼 클릭")
+    print("="*70)
+
+    confirm_button = BUTTONS_DIR / "reward_confirm.png"
+
+    if not confirm_button.exists():
+        print("✗ MISSION COMPLETE 확인 버튼 템플릿 없음")
+        logger.log_check(
+            check_name="MISSION_COMPLETE_확인_버튼_클릭",
+            passed=False,
+            message="템플릿 파일 없음",
+            details={"template_path": str(confirm_button)}
+        )
+        return False
+
+    location = matcher.find_template(confirm_button)
+
+    if not location:
+        print("✗ MISSION COMPLETE 확인 버튼 미발견")
+
+        screenshot = controller.screenshot()
+        logger.save_screenshot(screenshot, "reward_confirm_button_not_found")
+
+        logger.log_check(
+            check_name="MISSION_COMPLETE_확인_버튼_클릭",
+            passed=False,
+            message="확인 버튼 미발견",
+            details={}
+        )
+        return False
+
+    print(f"✓ MISSION COMPLETE 확인 버튼 발견")
+    print(f"  위치: {location}")
+    print("  1초 후 클릭...")
+    time.sleep(1)
+
+    try:
+        clicked = controller.click_template(location, wait_after=5.0)
+
+        if clicked:
+            print("✓ 클릭 성공")
+            print("  보상 화면 로딩 대기 중 (5초)...")
+
+            logger.log_check(
+                check_name="MISSION_COMPLETE_확인_버튼_클릭",
+                passed=True,
+                message="클릭 완료",
+                details={"location": location}
+            )
+            return True
+        else:
+            print("✗ 클릭 실패")
+
+            logger.log_check(
+                check_name="MISSION_COMPLETE_확인_버튼_클릭",
+                passed=False,
+                message="클릭 실패",
+                details={"location": location}
+            )
+            return False
+
+    except Exception as e:
+        print(f"✗ 클릭 중 오류: {e}")
+
+        logger.log_check(
+            check_name="MISSION_COMPLETE_확인_버튼_클릭",
+            passed=False,
+            message=f"클릭 오류: {e}",
+            details={"error": str(e)}
+        )
+        return False
+
+
 def verify_reward_items(matcher: TemplateMatcher, controller: GameController, logger: TestLogger) -> bool:
     """
-    4단계: 보상 아이템 UI 확인
+    5단계: 보상 아이템 UI 확인
 
     - 크레딧 아이콘
     - 활동 보고서 아이콘
@@ -280,7 +366,7 @@ def verify_reward_items(matcher: TemplateMatcher, controller: GameController, lo
         False: 보상 아이템 UI 미발견
     """
     print("\n" + "="*70)
-    print("[4단계] 보상 아이템 UI 확인")
+    print("[5단계] 보상 아이템 UI 확인")
     print("="*70)
     print("  화면 안정화 대기 중 (2초)...")
     time.sleep(2.0)
@@ -416,7 +502,13 @@ def test_reward_ui_verification():
         logger.finalize()
         return False
 
-    # [4단계] 보상 아이템 UI 확인
+    # [4단계] MISSION COMPLETE 확인 버튼 클릭
+    if not click_reward_confirm(matcher, controller, logger):
+        print("\n→ 테스트 종료 (MISSION COMPLETE 확인 버튼 클릭 실패)")
+        logger.finalize()
+        return False
+
+    # [5단계] 보상 아이템 UI 확인
     if not verify_reward_items(matcher, controller, logger):
         print("\n→ 테스트 종료 (보상 아이템 UI 미발견)")
         logger.finalize()
@@ -442,7 +534,8 @@ def main():
     print("  1. Victory 화면 확인")
     print("  2. Victory 확인 버튼 클릭")
     print("  3. MISSION COMPLETE 화면 확인")
-    print("  4. 보상 아이템 UI 확인 (크레딧, 활동 보고서)")
+    print("  4. MISSION COMPLETE 확인 버튼 클릭 (+ 5초 대기)")
+    print("  5. 보상 아이템 UI 확인 (크레딧, 활동 보고서)")
     print("\n테스트 제외 범위:")
     print("  - 실제 인벤토리 반영 여부")
     print("  - 보상 아이템 수량 검증 (OCR)")
