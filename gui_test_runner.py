@@ -146,7 +146,7 @@ class TestRunnerGUI:
             {
                 "id": "TC-006",
                 "name": "단계 6: 전투 결과 확인",
-                "description": "Victory → 통계 → 데미지 기록 → 랭크 획득",
+                "description": "전투 결과 → 통계 → 데미지 기록 → 랭크 획득",
                 "module": "tests.test_battle_result",
                 "color": "#9C27B0",
                 "dependencies": []  # 전투 진입 해야함
@@ -492,13 +492,6 @@ class TestRunnerGUI:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
 
-            # 결과 출력
-            self.root.after(0, self.log, "")
-            if success:
-                self.root.after(0, self.log, "✓ 테스트 완료 - PASS", "success")
-            else:
-                self.root.after(0, self.log, "✗ 테스트 완료 - FAIL", "error")
-
             return success
 
         except Exception as e:
@@ -533,25 +526,7 @@ class TestRunnerGUI:
         self.run_selected_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
 
-        # 결과 요약
-        pass_count = sum(1 for t in tests if self.test_results.get(t['module']) == "PASS")
-        fail_count = sum(1 for t in tests if self.test_results.get(t['module']) == "FAIL")
-        blocked_count = sum(1 for t in tests if self.test_results.get(t['module']) == "BLOCKED")
 
-        self.log("\n" + "="*60, "header")
-        self.log("테스트 완료 요약", "header")
-        self.log("="*60, "header")
-        self.log(f"전체: {len(tests)}개", "info")
-        self.log(f"성공: {pass_count}개", "success")
-        self.log(f"실패: {fail_count}개", "error")
-        self.log(f"건너뜀: {blocked_count}개", "warning")
-
-        if fail_count == 0 and blocked_count == 0:
-            self.update_status("완료 - 모두 성공 ✓")
-        elif fail_count > 0:
-            self.update_status(f"완료 - {fail_count}개 실패 ✗")
-        else:
-            self.update_status(f"완료 - {blocked_count}개 건너뜀 ⚠")
 
     def create_log_panel(self, parent):
         """로그 출력 패널 생성"""
