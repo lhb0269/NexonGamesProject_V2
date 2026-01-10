@@ -348,12 +348,12 @@ for i in range(1, 7):
 
 **템플릿 매칭 기반 보상 UI 검증 (구현 완료)**
 
-Victory 화면부터 MISSION COMPLETE 화면을 거쳐 보상 아이템 UI까지 순차적으로 검증:
+전투 결과 화면부터 MISSION COMPLETE 화면을 거쳐 보상 아이템 UI까지 순차적으로 검증:
 
 ```
-[1단계] Victory 화면 확인
+[1단계] 전투 결과 화면 확인
    ↓
-[2단계] Victory 확인 버튼 클릭
+[2단계] 전투 결과 확인 버튼 클릭
    ↓
 [3단계] MISSION COMPLETE 화면 확인
    ↓
@@ -379,9 +379,9 @@ Victory 화면부터 MISSION COMPLETE 화면을 거쳐 보상 아이템 UI까지
 - `gui_test_runner.py` - TC-007로 추가됨
 
 **구현 기능:**
-1. **Victory 화면 확인 및 버튼 클릭**
-   - `victory2.png` 템플릿 매칭
-   - `victory_confirm.png` 버튼 클릭
+1. **전투 결과 화면 확인 및 버튼 클릭**
+   - `전투 결과2.png` 템플릿 매칭
+   - `전투 결과_confirm.png` 버튼 클릭
 
 2. **MISSION COMPLETE 화면 확인 및 버튼 클릭**
    - `mission_complete.png` 템플릿 매칭 (10초 타임아웃)
@@ -399,7 +399,7 @@ Victory 화면부터 MISSION COMPLETE 화면을 거쳐 보상 아이템 UI까지
    - 템플릿 매칭으로 95%+ 인식률 달성
 
 2. **순차적 화면 전환의 예측 가능성**
-   - Victory → MISSION COMPLETE → 보상 화면
+   - 전투 결과 → MISSION COMPLETE → 보상 화면
    - 각 단계가 명확히 구분되어 오탐 가능성 낮음
 
 3. **검증 방식의 단순성**
@@ -408,8 +408,8 @@ Victory 화면부터 MISSION COMPLETE 화면을 거쳐 보상 아이템 UI까지
 
 **테스트 결과 예시:**
 ```
-[1단계] Victory 화면 확인... ✓
-[2단계] Victory 확인 버튼 클릭... ✓
+[1단계] 전투 결과 화면 확인... ✓
+[2단계] 전투 결과 확인 버튼 클릭... ✓
 [3단계] MISSION COMPLETE 화면 확인... ✓
 [4단계] MISSION COMPLETE 확인 버튼 클릭... ✓
 [5단계] 보상 아이템 UI 확인...
@@ -442,8 +442,8 @@ Victory 화면부터 MISSION COMPLETE 화면을 거쳐 보상 아이템 UI까지
 
 **예상 실행 시간:**
 - 정상 케이스: 약 20-25초
-  - Victory 화면 확인: 1초
-  - Victory 버튼 클릭 및 대기: 4초
+  - 전투 결과 화면 확인: 1초
+  - 전투 결과 버튼 클릭 및 대기: 4초
   - MISSION COMPLETE 대기: 최대 10초
   - MISSION COMPLETE 버튼 클릭 및 대기: 6초
   - 보상 아이템 확인: 2초
