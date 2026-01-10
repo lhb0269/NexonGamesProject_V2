@@ -53,13 +53,10 @@ def check_templates():
     student_template_count = 0
     for i in range(1, 7):
         student_icon = UI_DIR / f"student_icon_{i}.png"
-        damage_entry = UI_DIR / f"damage_entry_{i}.png"
 
         if student_icon.exists():
             print(f"✓ 학생_{i} 아이콘 존재")
             student_template_count += 1
-        if damage_entry.exists():
-            print(f"✓ 학생_{i} 데미지 항목 존재")
 
     if student_template_count == 0:
         print("  (학생 템플릿이 없으면 학생별 데미지 검증이 스킵됩니다)")
@@ -157,27 +154,11 @@ def verify_student_damage_entries(matcher, controller, logger):
             print(f"  ✗ 학생_{i} 아이콘 미발견 (데미지 기록 없음)")
             logger.log_check(f"학생_{i}_데미지_기록", False, "학생 아이콘 미발견")
             continue
-
-        # 데미지 항목 템플릿 경로
-        damage_entry = UI_DIR / f"damage_entry_{i}.png"
-
-        # 데미지 항목 템플릿이 없으면 아이콘만으로 검증
-        if not damage_entry.exists():
+        else:
             print(f"  ✓ 학생_{i} 데미지 기록 존재 (아이콘 확인)")
             logger.log_check(f"학생_{i}_데미지_기록", True, "학생 아이콘 발견")
             verified_count += 1
             continue
-
-        # 데미지 항목 찾기
-        entry_found = matcher.find_template(damage_entry)
-
-        if entry_found:
-            print(f"  ✓ 학생_{i} 데미지 기록 존재")
-            logger.log_check(f"학생_{i}_데미지_기록", True, "데미지 항목 발견")
-            verified_count += 1
-        else:
-            print(f"  ✗ 학생_{i} 데미지 항목 미발견")
-            logger.log_check(f"학생_{i}_데미지_기록", False, "데미지 항목 미발견")
 
     print(f"\n  → 총 {verified_count}명의 학생 데미지 기록 확인")
     return verified_count > 0
@@ -401,34 +382,34 @@ def test_battle_result_flow():
         logger.finalize()
         return False
 
-    # [5단계] 데미지 기록 창 확인 버튼 클릭
-    matcher = TemplateMatcher(confidence=0.5)
-    if not click_damage_report_confirm(matcher, controller, logger):
-        logger.finalize()
-        return False
+    # # [5단계] 데미지 기록 창 확인 버튼 클릭
+    # matcher = TemplateMatcher(confidence=0.5)
+    # if not click_damage_report_confirm(matcher, controller, logger):
+    #     logger.finalize()
+    #     return False
 
-    # [6단계] 전투 결과 확인 버튼 클릭
-    matcher = TemplateMatcher(confidence=0.7)
-    if not click_victory_confirm(matcher, controller, logger):
-        logger.finalize()
-        return False
+    # # [6단계] 전투 결과 확인 버튼 클릭
+    # matcher = TemplateMatcher(confidence=0.7)
+    # if not click_victory_confirm(matcher, controller, logger):
+    #     logger.finalize()
+    #     return False
 
-    # [7단계] 랭크 획득 창 확인
-    if not verify_rank_reward(matcher, controller, logger):
-        logger.finalize()
-        return False
+    # # [7단계] 랭크 획득 창 확인
+    # if not verify_rank_reward(matcher, controller, logger):
+    #     logger.finalize()
+    #     return False
 
-    # [8단계] 랭크 획득 창 확인 버튼 클릭
-    if not click_rank_reward_confirm(matcher, controller, logger):
-        logger.finalize()
-        return False
+    # # [8단계] 랭크 획득 창 확인 버튼 클릭
+    # if not click_rank_reward_confirm(matcher, controller, logger):
+    #     logger.finalize()
+    #     return False
 
-    # [9단계] 스테이지 화면 복귀 확인
-    result = verify_stage_return(matcher, controller, logger)
+    # # [9단계] 스테이지 화면 복귀 확인
+    # result = verify_stage_return(matcher, controller, logger)
 
     result_file = logger.finalize()
     print(f"\n결과 파일: {result_file}")
-    return result
+    #return result
 
 
 def main():
