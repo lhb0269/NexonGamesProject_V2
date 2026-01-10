@@ -151,6 +151,14 @@ class TestRunnerGUI:
                 "color": "#9C27B0",
                 "dependencies": []  # 전투 진입 해야함
             },
+            {
+                "id": "TC-007",
+                "name": "보상 획득 UI 검증",
+                "description": "Victory → MISSION COMPLETE → 보상 아이템 UI 확인",
+                "module": "tests.test_reward_ui_verification",
+                "color": "#FF5722",
+                "dependencies": []  # Victory 화면에서 시작
+            },
         ]
 
         self.test_items = tests
