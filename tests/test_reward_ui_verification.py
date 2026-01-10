@@ -86,7 +86,7 @@ def verify_victory_screen(matcher: TemplateMatcher, controller: GameController, 
     print("[1단계] Victory 화면 확인")
     print("="*70)
 
-    victory_screen = UI_DIR / "victory.png"
+    victory_screen = UI_DIR / "victory2.png"
 
     if not victory_screen.exists():
         print("✗ Victory 템플릿 파일 없음")
@@ -111,7 +111,7 @@ def verify_victory_screen(matcher: TemplateMatcher, controller: GameController, 
             check_name="Victory_화면_확인",
             passed=True,
             message="Victory 화면 발견",
-            details={"location": location}
+            details={"location": tuple(map(int, location)) if location else None}
         )
         return True
     else:
@@ -187,7 +187,7 @@ def click_victory_confirm(matcher: TemplateMatcher, controller: GameController, 
                 check_name="Victory_확인_버튼_클릭",
                 passed=True,
                 message="클릭 완료",
-                details={"location": location}
+                details={"location": tuple(map(int, location)) if location else None}
             )
             return True
         else:
@@ -197,7 +197,7 @@ def click_victory_confirm(matcher: TemplateMatcher, controller: GameController, 
                 check_name="Victory_확인_버튼_클릭",
                 passed=False,
                 message="클릭 실패",
-                details={"location": location}
+                details={"location": tuple(map(int, location)) if location else None}
             )
             return False
 
@@ -251,7 +251,7 @@ def verify_mission_complete_screen(matcher: TemplateMatcher, controller: GameCon
             check_name="MISSION_COMPLETE_화면_확인",
             passed=True,
             message="MISSION COMPLETE 화면 발견",
-            details={"location": location}
+            details={"location": tuple(map(int, location)) if location else None}
         )
         return True
     else:
@@ -328,7 +328,7 @@ def click_reward_confirm(matcher: TemplateMatcher, controller: GameController, l
                 check_name="MISSION_COMPLETE_확인_버튼_클릭",
                 passed=True,
                 message="클릭 완료",
-                details={"location": location}
+                details={"location": tuple(map(int, location)) if location else None}
             )
             return True
         else:
@@ -338,7 +338,7 @@ def click_reward_confirm(matcher: TemplateMatcher, controller: GameController, l
                 check_name="MISSION_COMPLETE_확인_버튼_클릭",
                 passed=False,
                 message="클릭 실패",
-                details={"location": location}
+                details={"location": tuple(map(int, location)) if location else None}
             )
             return False
 
@@ -408,7 +408,7 @@ def verify_reward_items(matcher: TemplateMatcher, controller: GameController, lo
                 check_name=f"보상_아이템_{item_name}",
                 passed=True,
                 message=f"{item_name} 아이콘 발견",
-                details={"location": location}
+                details={"location": tuple(map(int, location)) if location else None}
             )
         else:
             print(f"    ✗ {item_name} 아이콘 미발견")
