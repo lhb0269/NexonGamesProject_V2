@@ -129,7 +129,7 @@ def click_battle_log_button(matcher, controller, logger):
         return False
 
 
-def verify_student_damage_entries(matcher, controller, logger):
+def verify_student_damage_entries(matcher, logger):
     """학생별 데미지 항목 존재 여부 확인 (최대 6명)"""
     print("\n[4-1단계] 학생별 데미지 항목 확인...")
     time.sleep(1.0)  # 화면 안정화 대기
@@ -179,7 +179,7 @@ def verify_damage_report(matcher, controller, logger):
         logger.save_screenshot(screenshot, "damage_report_found")
 
         # 학생별 데미지 항목 검증
-        verify_student_damage_entries(matcher, controller, logger)
+        verify_student_damage_entries(matcher, logger)
 
         return True
     else:
