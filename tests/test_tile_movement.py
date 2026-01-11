@@ -81,9 +81,9 @@ def find_character_marker(matcher, use_mask_file, logger):
     character_y = None
 
     if not initial_marker_pos:
-        print("⚠ 캐릭터 마커를 찾을 수 없습니다. 반경 제한 없이 발판을 찾습니다.")
         logger.log_check("캐릭터_마커_초기_위치", False, "마커 미발견")
         initial_marker_pos = None
+        return None,None,None # 마커를 찾지 못했으면 좌표 None 반환
     else:
         character_x = initial_marker_pos[0] + initial_marker_pos[2] // 2
         character_y = (initial_marker_pos[1] + initial_marker_pos[3] // 2) + 250  # 위치 보정
